@@ -5,8 +5,11 @@ using System.Linq;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using SharpServiceCollection.Attributes;
+using SharpServiceCollection.Enums;
 
-namespace SharpServiceCollection;
+
+namespace SharpServiceCollection.Extensions;
 
 public static class ServiceCollectionExtensions
 {
@@ -18,37 +21,39 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddServicesBySharpServiceCollection(this IServiceCollection services,
         Assembly assembly)
     {
-        services = MapResolveFrom(services, assembly);
-        services = MapResolveFromWithKey(services, assembly);
+        services = MapResolveBy(services, assembly);
+        services = MapKeyedResolveBy(services, assembly);
 
-        services = MapTryResolveFrom(services, assembly);
-        services = MapTryResolveFromWithKey(services, assembly);
+        services = MapTryResolveBy(services, assembly);
+        services = MapKeyedTryResolveBy(services, assembly);
 
-        services = MapResolveFromSelf(services, assembly);
+        services = MapResolveByMatchingInterface(services, assembly);
+        services = MapTryResolveByMatchingInterface(services, assembly);
+
+        services = MapResolveBySelf(services, assembly);
+        services = MapTryResolveBySelf(services, assembly);
 
         return services;
     }
 
-    private static IServiceCollection MapResolveFrom(IServiceCollection services, Assembly assembly)
+    private static IServiceCollection MapResolveBy(IServiceCollection services, Assembly assembly)
     {
-        var typesWithAttribute = GetGenericAttributes(assembly, typeof(ResolveFromAttribute<>));
+        var typesWithAttribute = GetGenericAttributes(assembly, typeof(ResolveByAttribute<>));
 
         foreach (var implType in typesWithAttribute)
         {
-            var attributes = GetAttributeImplementations(implType, typeof(ResolveFromAttribute<>));
+            var attributes = GetAttributeImplementations(implType, typeof(ResolveByAttribute<>));
 
             foreach (var attribute in attributes)
             {
-                // Retrieve the type argument T from ResolveFromAttribute<T>.
                 var resolverType = attribute.GetType().GetGenericArguments()[0];
 
                 var lifetimeProperty = attribute.GetType()
-                    .GetProperty(nameof(ResolveFromAttribute<byte>.Lifetime));
+                    .GetProperty(nameof(ResolveByAttribute<byte>.Lifetime));
 
 
                 if (lifetimeProperty?.GetValue(attribute) is InstanceLifetime lifetime)
                 {
-                    // Register the service with the appropriate lifetime.
                     switch (lifetime)
                     {
                         case InstanceLifetime.Singleton:
@@ -70,30 +75,28 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    private static IServiceCollection MapResolveFromWithKey(IServiceCollection services, Assembly assembly)
+    private static IServiceCollection MapKeyedResolveBy(IServiceCollection services, Assembly assembly)
     {
-        var typesWithAttribute = GetGenericAttributes(assembly, typeof(ResolveFromWithKeyAttribute<>));
+        var typesWithAttribute = GetGenericAttributes(assembly, typeof(KeyedResolveByAttribute<>));
 
         foreach (var implType in typesWithAttribute)
         {
-            var attributes = GetAttributeImplementations(implType, typeof(ResolveFromWithKeyAttribute<>));
+            var attributes = GetAttributeImplementations(implType, typeof(KeyedResolveByAttribute<>));
 
             foreach (var attribute in attributes)
             {
-                // Retrieve the type argument T from ResolveFromAttribute<T>.
                 var resolverType = attribute.GetType().GetGenericArguments()[0];
 
                 var lifetimeProperty = attribute.GetType()
-                    .GetProperty(nameof(ResolveFromWithKeyAttribute<byte>.Lifetime));
+                    .GetProperty(nameof(KeyedResolveByAttribute<byte>.Lifetime));
 
                 var keyProperty = attribute.GetType()
-                    .GetProperty(nameof(ResolveFromWithKeyAttribute<byte>.Key));
+                    .GetProperty(nameof(KeyedResolveByAttribute<byte>.Key));
 
 
                 if (lifetimeProperty?.GetValue(attribute) is InstanceLifetime lifetime &&
                     keyProperty?.GetValue(attribute) is string key && string.IsNullOrEmpty(key) is false)
                 {
-                    // Register the service with the appropriate lifetime.
                     switch (lifetime)
                     {
                         case InstanceLifetime.Singleton:
@@ -115,25 +118,89 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    private static IServiceCollection MapTryResolveFrom(IServiceCollection services, Assembly assembly)
+    private static IServiceCollection MapResolveByMatchingInterface(IServiceCollection services, Assembly assembly)
     {
-        var typesWithAttribute = GetGenericAttributes(assembly, typeof(TryResolveFromAttribute<>));
+        var typesWithAttribute = assembly.GetTypes()
+            .Where(t => t.GetCustomAttribute<ResolveByMatchingInterfaceAttribute>() is not null);
 
         foreach (var implType in typesWithAttribute)
         {
-            var attributes = GetAttributeImplementations(implType, typeof(TryResolveFromAttribute<>));
+            var attribute = implType.GetCustomAttribute<ResolveByMatchingInterfaceAttribute>();
+            var interfaceName = $"I{implType.Name}";
+            var interfaceType = implType.GetInterface(interfaceName);
+
+            if (interfaceType is not null && attribute is not null && interfaceType.IsAssignableFrom(implType))
+            {
+                switch (attribute.Lifetime)
+                {
+                    case InstanceLifetime.Singleton:
+                        services.AddSingleton(interfaceType, implType);
+                        break;
+                    case InstanceLifetime.Scoped:
+                        services.AddScoped(interfaceType, implType);
+                        break;
+                    case InstanceLifetime.Transient:
+                        services.AddTransient(interfaceType, implType);
+                        break;
+                    default:
+                        throw new InvalidEnumArgumentException();
+                }
+            }
+        }
+
+        return services;
+    }
+
+    private static IServiceCollection MapTryResolveByMatchingInterface(IServiceCollection services, Assembly assembly)
+    {
+        var typesWithAttribute = assembly.GetTypes()
+            .Where(t => t.GetCustomAttribute<TryResolveByMatchingInterfaceAttribute>() is not null);
+
+        foreach (var implType in typesWithAttribute)
+        {
+            var attribute = implType.GetCustomAttribute<TryResolveByMatchingInterfaceAttribute>();
+            var interfaceName = $"I{implType.Name}";
+            var interfaceType = implType.GetInterface(interfaceName);
+
+            if (interfaceType is not null && attribute is not null && interfaceType.IsAssignableFrom(implType))
+            {
+                switch (attribute.Lifetime)
+                {
+                    case InstanceLifetime.Singleton:
+                        services.TryAddSingleton(interfaceType, implType);
+                        break;
+                    case InstanceLifetime.Scoped:
+                        services.TryAddScoped(interfaceType, implType);
+                        break;
+                    case InstanceLifetime.Transient:
+                        services.TryAddTransient(interfaceType, implType);
+                        break;
+                    default:
+                        throw new InvalidEnumArgumentException();
+                }
+            }
+        }
+
+        return services;
+    }
+
+    private static IServiceCollection MapTryResolveBy(IServiceCollection services, Assembly assembly)
+    {
+        var typesWithAttribute = GetGenericAttributes(assembly, typeof(TryResolveByAttribute<>));
+
+        foreach (var implType in typesWithAttribute)
+        {
+            var attributes = GetAttributeImplementations(implType, typeof(TryResolveByAttribute<>));
 
             foreach (var attribute in attributes)
             {
-                // Retrieve the type argument T from ResolveFromAttribute<T>.
                 var resolverType = attribute.GetType().GetGenericArguments()[0];
 
                 var lifetimeProperty = attribute.GetType()
-                    .GetProperty(nameof(TryResolveFromAttribute<byte>.Lifetime));
+                    .GetProperty(nameof(TryResolveByAttribute<byte>.Lifetime));
 
                 if (lifetimeProperty?.GetValue(attribute) is InstanceLifetime lifetime)
                 {
-                    // Register the service with the appropriate lifetime.
                     switch (lifetime)
                     {
                         case InstanceLifetime.Singleton:
@@ -155,29 +222,27 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    private static IServiceCollection MapTryResolveFromWithKey(IServiceCollection services, Assembly assembly)
+    private static IServiceCollection MapKeyedTryResolveBy(IServiceCollection services, Assembly assembly)
     {
-        var typesWithAttribute = GetGenericAttributes(assembly, typeof(TryResolveFromWithKeyAttribute<>));
+        var typesWithAttribute = GetGenericAttributes(assembly, typeof(KeyedTryResolveByAttribute<>));
 
         foreach (var implType in typesWithAttribute)
         {
-            var attributes = GetAttributeImplementations(implType, typeof(TryResolveFromWithKeyAttribute<>));
+            var attributes = GetAttributeImplementations(implType, typeof(KeyedTryResolveByAttribute<>));
 
             foreach (var attribute in attributes)
             {
-                // Retrieve the type argument T from ResolveFromAttribute<T>.
                 var resolverType = attribute.GetType().GetGenericArguments()[0];
 
                 var lifetimeProperty = attribute.GetType()
-                    .GetProperty(nameof(TryResolveFromWithKeyAttribute<byte>.Lifetime));
+                    .GetProperty(nameof(KeyedTryResolveByAttribute<byte>.Lifetime));
 
                 var keyProperty = attribute.GetType()
-                    .GetProperty(nameof(TryResolveFromWithKeyAttribute<byte>.Key));
+                    .GetProperty(nameof(KeyedTryResolveByAttribute<byte>.Key));
 
                 if (lifetimeProperty?.GetValue(attribute) is InstanceLifetime lifetime &&
                     keyProperty?.GetValue(attribute) is string key && string.IsNullOrEmpty(key) is false)
                 {
-                    // Register the service with the appropriate lifetime.
                     switch (lifetime)
                     {
                         case InstanceLifetime.Singleton:
@@ -199,21 +264,19 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    private static IServiceCollection MapResolveFromSelf(IServiceCollection services, Assembly assembly)
+    private static IServiceCollection MapResolveBySelf(IServiceCollection services, Assembly assembly)
     {
-        // Register services decorated with ResolveFromSelfAttribute
         var typesWithResolveFromSelf = assembly.GetTypes()
-            .Where(t => t.GetCustomAttributes(typeof(ResolveFromSelfAttribute), false).Length != 0);
+            .Where(t => t.GetCustomAttributes(typeof(ResolveBySelfAttribute), false).Length != 0);
 
         foreach (var implType in typesWithResolveFromSelf)
         {
-            var attributes = implType.GetCustomAttributes(typeof(ResolveFromSelfAttribute), inherit: false)
-                .Cast<ResolveFromSelfAttribute>();
+            var attributes = implType.GetCustomAttributes(typeof(ResolveBySelfAttribute), inherit: false)
+                .Cast<ResolveBySelfAttribute>();
 
             foreach (var attribute in attributes)
             {
                 var lifetime = attribute.Lifetime;
-                // Register the type as itself.
                 switch (lifetime)
                 {
                     case InstanceLifetime.Singleton:
@@ -224,6 +287,39 @@ public static class ServiceCollectionExtensions
                         break;
                     case InstanceLifetime.Transient:
                         services.AddTransient(implType);
+                        break;
+                    default:
+                        throw new InvalidEnumArgumentException();
+                }
+            }
+        }
+
+        return services;
+    }
+
+    private static IServiceCollection MapTryResolveBySelf(IServiceCollection services, Assembly assembly)
+    {
+        var typesWithResolveFromSelf = assembly.GetTypes()
+            .Where(t => t.GetCustomAttributes(typeof(TryResolveBySelfAttribute), false).Length != 0);
+
+        foreach (var implType in typesWithResolveFromSelf)
+        {
+            var attributes = implType.GetCustomAttributes(typeof(TryResolveBySelfAttribute), inherit: false)
+                .Cast<TryResolveBySelfAttribute>();
+
+            foreach (var attribute in attributes)
+            {
+                var lifetime = attribute.Lifetime;
+                switch (lifetime)
+                {
+                    case InstanceLifetime.Singleton:
+                        services.TryAddSingleton(implType);
+                        break;
+                    case InstanceLifetime.Scoped:
+                        services.TryAddScoped(implType);
+                        break;
+                    case InstanceLifetime.Transient:
+                        services.TryAddTransient(implType);
                         break;
                     default:
                         throw new InvalidEnumArgumentException();

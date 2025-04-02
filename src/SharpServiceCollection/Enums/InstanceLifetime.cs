@@ -1,4 +1,4 @@
-namespace SharpServiceCollection;
+namespace SharpServiceCollection.Enums;
 
 public enum InstanceLifetime : byte
 {

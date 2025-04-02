@@ -1,14 +1,15 @@
 using System;
+using SharpServiceCollection.Enums;
 
-namespace SharpServiceCollection;
+namespace SharpServiceCollection.Attributes;
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
-public class ResolveFromWithKeyAttribute<T> : Attribute
+public class KeyedTryResolveByAttribute<T> : Attribute
 {
     public InstanceLifetime Lifetime { get; }
     public string Key { get; }
 
-    public ResolveFromWithKeyAttribute(InstanceLifetime lifetime, string key)
+    public KeyedTryResolveByAttribute(InstanceLifetime lifetime, string key)
     {
         ArgumentException.ThrowIfNullOrEmpty(key);
         Lifetime = lifetime;
