@@ -10,16 +10,22 @@ namespace SharpServiceCollection;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection RegisterSharpResolver(this IServiceCollection services, Assembly assembly)
+    public static IServiceCollection AddServicesBySharpServiceCollection(this IServiceCollection services)
+    {
+        return AddServicesBySharpServiceCollection(services, Assembly.GetExecutingAssembly());
+    }
+
+    public static IServiceCollection AddServicesBySharpServiceCollection(this IServiceCollection services,
+        Assembly assembly)
     {
         services = MapResolveFrom(services, assembly);
         services = MapResolveFromWithKey(services, assembly);
-        
+
         services = MapTryResolveFrom(services, assembly);
         services = MapTryResolveFromWithKey(services, assembly);
-        
+
         services = MapResolveFromSelf(services, assembly);
-        
+
         return services;
     }
 
@@ -37,7 +43,7 @@ public static class ServiceCollectionExtensions
                 var resolverType = attribute.GetType().GetGenericArguments()[0];
 
                 var lifetimeProperty = attribute.GetType()
-                    .GetProperty(nameof(ResolveFromAttribute<byte>.Lifetime), BindingFlags.Public);
+                    .GetProperty(nameof(ResolveFromAttribute<byte>.Lifetime));
 
 
                 if (lifetimeProperty?.GetValue(attribute) is InstanceLifetime lifetime)
@@ -78,10 +84,10 @@ public static class ServiceCollectionExtensions
                 var resolverType = attribute.GetType().GetGenericArguments()[0];
 
                 var lifetimeProperty = attribute.GetType()
-                    .GetProperty(nameof(ResolveFromWithKeyAttribute<byte>.Lifetime), BindingFlags.Public);
+                    .GetProperty(nameof(ResolveFromWithKeyAttribute<byte>.Lifetime));
 
                 var keyProperty = attribute.GetType()
-                    .GetProperty(nameof(ResolveFromWithKeyAttribute<byte>.Key), BindingFlags.Public);
+                    .GetProperty(nameof(ResolveFromWithKeyAttribute<byte>.Key));
 
 
                 if (lifetimeProperty?.GetValue(attribute) is InstanceLifetime lifetime &&
@@ -123,7 +129,7 @@ public static class ServiceCollectionExtensions
                 var resolverType = attribute.GetType().GetGenericArguments()[0];
 
                 var lifetimeProperty = attribute.GetType()
-                    .GetProperty(nameof(TryResolveFromAttribute<byte>.Lifetime), BindingFlags.Public);
+                    .GetProperty(nameof(TryResolveFromAttribute<byte>.Lifetime));
 
                 if (lifetimeProperty?.GetValue(attribute) is InstanceLifetime lifetime)
                 {
@@ -163,11 +169,10 @@ public static class ServiceCollectionExtensions
                 var resolverType = attribute.GetType().GetGenericArguments()[0];
 
                 var lifetimeProperty = attribute.GetType()
-                    .GetProperty(nameof(TryResolveFromWithKeyAttribute<byte>.Lifetime), BindingFlags.Public);
+                    .GetProperty(nameof(TryResolveFromWithKeyAttribute<byte>.Lifetime));
 
                 var keyProperty = attribute.GetType()
-                    .GetProperty(nameof(TryResolveFromWithKeyAttribute<byte>.Key), BindingFlags.Public);
-
+                    .GetProperty(nameof(TryResolveFromWithKeyAttribute<byte>.Key));
 
                 if (lifetimeProperty?.GetValue(attribute) is InstanceLifetime lifetime &&
                     keyProperty?.GetValue(attribute) is string key && string.IsNullOrEmpty(key) is false)
