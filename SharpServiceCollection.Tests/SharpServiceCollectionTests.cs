@@ -1,6 +1,7 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using SharpServiceCollection.Extensions;
+using SharpServiceCollection.Tests.TestData.TryVsNonTry;
 using SharpServiceCollection.Tests.TestData.WithConventionalName;
 using SharpServiceCollection.Tests.TestData.WithoutConventionalName;
 using Shouldly;
@@ -191,5 +192,48 @@ public class SharpServiceCollectionTests
         // Assert
         var service = serviceProvider.GetKeyedService<IKeyedScopedDemoService>("wrong_key");
         service.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Baz_TryResolveBy_ITryResolver()
+    {
+        // Arrange
+        var serviceCollection = new ServiceCollection();
+        var assembly = Assembly.GetExecutingAssembly();
+
+        // Act
+        serviceCollection.AddServicesBySharpServiceCollection(assembly);
+        var serviceProvider = serviceCollection.BuildServiceProvider();
+        var descriptor = serviceCollection.FirstOrDefault(d => d.ServiceType == typeof(ITryResolver));
+
+        // Assert
+        var service = serviceProvider.GetService<ITryResolver>();
+        service.ShouldNotBeNull();
+        service.ShouldBeOfType<Bar>();
+
+        descriptor.ShouldNotBeNull();
+        descriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
+    }
+
+
+    [Fact]
+    public void Foo_TryResolveBy_IResolver()
+    {
+        // Arrange
+        var serviceCollection = new ServiceCollection();
+        var assembly = Assembly.GetExecutingAssembly();
+
+        // Act
+        serviceCollection.AddServicesBySharpServiceCollection(assembly);
+        var serviceProvider = serviceCollection.BuildServiceProvider();
+        var descriptor = serviceCollection.FirstOrDefault(d => d.ServiceType == typeof(IResolver));
+
+        // Assert
+        var service = serviceProvider.GetService<IResolver>();
+        service.ShouldNotBeNull();
+        service.ShouldBeOfType<Foo>();
+
+        descriptor.ShouldNotBeNull();
+        descriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
     }
 }

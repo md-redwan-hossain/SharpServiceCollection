@@ -334,7 +334,8 @@ public static class ServiceCollectionExtensions
     {
         return assembly.GetTypes()
             .Where(t => t.GetCustomAttributes().Any(attr =>
-                attr.GetType().IsGenericType && attr.GetType().GetGenericTypeDefinition() == targetType));
+                attr.GetType().IsGenericType && attr.GetType().GetGenericTypeDefinition() == targetType))
+            .OrderBy(t => t.Name);
     }
 
     private static IEnumerable<Attribute> GetAttributeImplementations(Type implType, Type targetType)

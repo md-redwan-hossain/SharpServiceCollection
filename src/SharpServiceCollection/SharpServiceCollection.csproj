@@ -1,12 +1,44 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
+    </ItemGroup>
+
     <PropertyGroup>
-        <TargetFramework>net7.0</TargetFramework>
+        <TargetFramework>net8.0</TargetFramework>
         <Nullable>enable</Nullable>
+        <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
+        <Version>0.0.1</Version>
+        <Title>SharpServiceCollection</Title>
+        <Authors>Md. Redwan Hossain</Authors>
+        <Copyright>Copyright (c) Md. Redwan Hossain</Copyright>
+        <PackageProjectUrl>https://github.com/md-redwan-hossain/SharpServiceCollection</PackageProjectUrl>
+        <PackageIcon>logo.png</PackageIcon>
+        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+        <RepositoryUrl>https://github.com/md-redwan-hossain/SharpServiceCollection</RepositoryUrl>
+        <PackageTags>dependency injection ioc inversion di assembly scanning</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <NoWarn>CS1591</NoWarn>
+        <DocumentationFile Condition="'$(Configuration)'=='Release'">bin\$(Configuration)\$(TargetFramework)\SharpServiceCollection.xml</DocumentationFile>
+        <Description>SharpServiceCollection is a lightweight C# library that wraps the IServiceCollection interface to streamline dependency injection through attribute-based assembly scanning.</Description>
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.3" />
+        <None Include="..\..\logo.png">
+            <Pack>True</Pack>
+            <PackagePath>.</PackagePath>
+            <Link>logo.png</Link>
+        </None>
     </ItemGroup>
+
+
+    <ItemGroup>
+        <None Include="..\..\README.md">
+            <Pack>True</Pack>
+            <Link>README.md</Link>
+            <PackagePath>.</PackagePath>
+        </None>
+    </ItemGroup>
+
 
 </Project>
