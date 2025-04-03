@@ -12,7 +12,8 @@ dependency injection through attribute-based assembly scanning.
 
 - `SharpServiceCollection` scans an assembly to automatically register services in the `IServiceCollection` container.
 - Use the `AddServicesBySharpServiceCollection` extension method of `IServiceCollection` to perform assembly scanning.
-- By default, it will scan the executing assembly, the method has an overload that accepts an assembly.
+- By default, it will scan the executing assembly using `Assembly.GetCallingAssembly()`, the method has an overload that
+  accepts an assembly.
 
 ```csharp
 using SharpServiceCollection.Extensions;

@@ -15,7 +15,7 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddServicesBySharpServiceCollection(this IServiceCollection services)
     {
-        return AddServicesBySharpServiceCollection(services, Assembly.GetExecutingAssembly());
+        return AddServicesBySharpServiceCollection(services, Assembly.GetCallingAssembly());
     }
 
     public static IServiceCollection AddServicesBySharpServiceCollection(this IServiceCollection services,
