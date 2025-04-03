@@ -1,7 +1,7 @@
 ### Installation
 
 To install, run `dotnet add package SharpServiceCollection` or
-from [Nuget](https://www.nuget.org/packages/SharpServiceCollection/)
+from [Nuget](https://www.nuget.org/packages/SharpServiceCollection)
 
 ### Introduction
 
@@ -9,6 +9,24 @@ from [Nuget](https://www.nuget.org/packages/SharpServiceCollection/)
 dependency injection through attribute-based assembly scanning.
 
 ### Usage
+
+- `SharpServiceCollection` scans an assembly to automatically register services in the `IServiceCollection` container.
+- Use the `AddServicesBySharpServiceCollection` extension method of `IServiceCollection` to perform assembly scanning.
+- By default, it will scan the executing assembly, the method has an overload that accepts an assembly.
+
+```csharp
+using SharpServiceCollection.Extensions;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Default
+builder.Services.AddServicesBySharpServiceCollection();
+
+// Overload
+builder.Services.AddServicesBySharpServiceCollection(typeof(Program).Assembly);
+
+var app = builder.Build();
+```
 
 - `InstanceLifetime` is an Enum with the values `Singleton` `Scoped` `Transient`
 - `IServiceCollection` comes with `Add*` and `TryAdd*` methods. `SharpServiceCollection` offers the same functionality.
@@ -18,7 +36,7 @@ dependency injection through attribute-based assembly scanning.
   attributes will register the first one, which is `Bar`
 - In general, it is better to use `Try*` based attributes.
 
-```cs
+```csharp
 
 using SharpServiceCollection.Attributes;
 using SharpServiceCollection.Enums;
