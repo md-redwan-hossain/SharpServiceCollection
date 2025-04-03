@@ -1,7 +1,7 @@
 ### Installation
 
 To install, run `dotnet add package SharpServiceCollection` or
-from [Nuget](https://www.nuget.org/packages/SharpServiceCollection/)
+from [Nuget](https://www.nuget.org/packages/SharpServiceCollection)
 
 ### Introduction
 
