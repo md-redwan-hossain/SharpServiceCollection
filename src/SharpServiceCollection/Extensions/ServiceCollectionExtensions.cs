@@ -8,7 +8,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using SharpServiceCollection.Attributes;
 using SharpServiceCollection.Enums;
 
-
 namespace SharpServiceCollection.Extensions;
 
 public static class ServiceCollectionExtensions
@@ -33,8 +32,85 @@ public static class ServiceCollectionExtensions
         services = MapResolveBySelf(services, assembly);
         services = MapTryResolveBySelf(services, assembly);
 
+        services = MapResolveByImplementedInterface(services, assembly);
+        services = MapTryResolveByImplementedInterface(services, assembly);
+
         return services;
     }
+
+    private static IServiceCollection MapResolveByImplementedInterface(IServiceCollection services, Assembly assembly)
+    {
+        var typesWithAttribute = assembly.GetTypes()
+            .Where(t => t.GetCustomAttribute<ResolveByImplementedInterfaceAttribute>() is not null)
+            .OrderBy(t => t.Name);
+
+        foreach (var implType in typesWithAttribute)
+        {
+            var attribute = implType.GetCustomAttribute<ResolveByImplementedInterfaceAttribute>();
+            var interfaceTypes = implType.GetInterfaces();
+
+            foreach (var interfaceType in interfaceTypes)
+            {
+                if (attribute is not null && interfaceType.IsAssignableFrom(implType))
+                {
+                    switch (attribute.Lifetime)
+                    {
+                        case InstanceLifetime.Singleton:
+                            services.AddSingleton(interfaceType, implType);
+                            break;
+                        case InstanceLifetime.Scoped:
+                            services.AddScoped(interfaceType, implType);
+                            break;
+                        case InstanceLifetime.Transient:
+                            services.AddTransient(interfaceType, implType);
+                            break;
+                        default:
+                            throw new InvalidEnumArgumentException();
+                    }
+                }
+            }
+        }
+
+        return services;
+    }
+
+    private static IServiceCollection MapTryResolveByImplementedInterface(IServiceCollection services,
+        Assembly assembly)
+    {
+        var typesWithAttribute = assembly.GetTypes()
+            .Where(t => t.GetCustomAttribute<TryResolveByImplementedInterfaceAttribute>() is not null)
+            .OrderBy(t => t.Name);
+
+        foreach (var implType in typesWithAttribute)
+        {
+            var attribute = implType.GetCustomAttribute<TryResolveByImplementedInterfaceAttribute>();
+            var interfaceTypes = implType.GetInterfaces();
+
+            foreach (var interfaceType in interfaceTypes)
+            {
+                if (attribute is not null && interfaceType.IsAssignableFrom(implType))
+                {
+                    switch (attribute.Lifetime)
+                    {
+                        case InstanceLifetime.Singleton:
+                            services.TryAddSingleton(interfaceType, implType);
+                            break;
+                        case InstanceLifetime.Scoped:
+                            services.TryAddScoped(interfaceType, implType);
+                            break;
+                        case InstanceLifetime.Transient:
+                            services.TryAddTransient(interfaceType, implType);
+                            break;
+                        default:
+                            throw new InvalidEnumArgumentException();
+                    }
+                }
+            }
+        }
+
+        return services;
+    }
+
 
     private static IServiceCollection MapResolveBy(IServiceCollection services, Assembly assembly)
     {
@@ -121,7 +197,8 @@ public static class ServiceCollectionExtensions
     private static IServiceCollection MapResolveByMatchingInterface(IServiceCollection services, Assembly assembly)
     {
         var typesWithAttribute = assembly.GetTypes()
-            .Where(t => t.GetCustomAttribute<ResolveByMatchingInterfaceAttribute>() is not null);
+            .Where(t => t.GetCustomAttribute<ResolveByMatchingInterfaceAttribute>() is not null)
+            .OrderBy(t => t.Name);
 
         foreach (var implType in typesWithAttribute)
         {
@@ -154,7 +231,8 @@ public static class ServiceCollectionExtensions
     private static IServiceCollection MapTryResolveByMatchingInterface(IServiceCollection services, Assembly assembly)
     {
         var typesWithAttribute = assembly.GetTypes()
-            .Where(t => t.GetCustomAttribute<TryResolveByMatchingInterfaceAttribute>() is not null);
+            .Where(t => t.GetCustomAttribute<TryResolveByMatchingInterfaceAttribute>() is not null)
+            .OrderBy(t => t.Name);
 
         foreach (var implType in typesWithAttribute)
         {
