@@ -42,27 +42,39 @@ var app = builder.Build();
 using SharpServiceCollection.Attributes;
 using SharpServiceCollection.Enums;
 
+// The class will be resolvable by the interface specified in the generic argument
 [TryResolveBy<IScopedDemoService>(InstanceLifetime.Scoped)]
 [ResolveBy<IScopedDemoService>(InstanceLifetime.Scoped)]
 public class ScopedDemoType : IScopedDemoService, IKeyedScopedDemoService
 {
 }
 
+// The class will be resolvable by the interface specified in the generic argument and the key
 [KeyedTryResolveBy<IKeyedScopedDemoService>(InstanceLifetime.Scoped, "keyed")]
 [KeyedResolveBy<IKeyedScopedDemoService>(InstanceLifetime.Scoped, "keyed")]
 public class ScopedDemoType : IScopedDemoService, IKeyedScopedDemoService
 {
 }
 
+// The class will be resolvable by itself
 [TryResolveBySelf(InstanceLifetime.Scoped)]
 [ResolveBySelf(InstanceLifetime.Scoped)]
 public class ScopedDependency : IScopedDependency
 {
 }
 
+// This will work by convention
+// The class must have to implement an interface that has the same name of the class prefixed with `I`
 [TryResolveByMatchingInterface(InstanceLifetime.Scoped)]
 [ResolveByMatchingInterface(InstanceLifetime.Scoped)]
 public class ScopedDependency : IScopedDependency
+{
+}
+
+// The class will be resolvable by any of the implementeed interface
+[TryResolveByImplementedInterface(InstanceLifetime.Scoped)]
+[ResolveByImplementedInterface(InstanceLifetime.Scoped)]
+public class FooBarBaz : IFoo, IBar, IBaz
 {
 }
 ```

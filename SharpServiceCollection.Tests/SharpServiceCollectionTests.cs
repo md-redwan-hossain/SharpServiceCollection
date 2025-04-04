@@ -1,6 +1,7 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using SharpServiceCollection.Extensions;
+using SharpServiceCollection.Tests.TestData.AnyInterfaceResolve;
 using SharpServiceCollection.Tests.TestData.TryVsNonTry;
 using SharpServiceCollection.Tests.TestData.WithConventionalName;
 using SharpServiceCollection.Tests.TestData.WithoutConventionalName;
@@ -235,5 +236,67 @@ public class SharpServiceCollectionTests
 
         descriptor.ShouldNotBeNull();
         descriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void FooBarBaz_ResolveByImplementedInterface_IFoo_IBar_IBaz()
+    {
+        // Arrange
+        var serviceCollection = new ServiceCollection();
+        var assembly = Assembly.GetExecutingAssembly();
+        List<Type> types = [typeof(IFoo), typeof(IBar), typeof(IBaz)];
+
+        // Act
+        serviceCollection.AddServicesBySharpServiceCollection(assembly);
+        var serviceProvider = serviceCollection.BuildServiceProvider();
+
+        foreach (var type in types)
+        {
+            var descriptor = serviceCollection.FirstOrDefault(d => d.ServiceType == type);
+            var service = serviceProvider.GetService(type);
+
+            // Assert
+            service.ShouldNotBeNull();
+            service.ShouldBeOfType<FooBarBaz>();
+
+            descriptor.ShouldNotBeNull();
+            descriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
+        }
+    }
+
+    [Fact]
+    public void FooBarBaz_TryResolveByImplementedInterface_IFoo_IBar_IBaz()
+    {
+        // Arrange
+        var serviceCollection = new ServiceCollection();
+        var assembly = Assembly.GetExecutingAssembly();
+        List<Type> types = [typeof(IFoo), typeof(IBar), typeof(IBaz), typeof(IXyz)];
+
+        // Act
+        serviceCollection.AddServicesBySharpServiceCollection(assembly);
+        var serviceProvider = serviceCollection.BuildServiceProvider();
+
+        foreach (var type in types)
+        {
+            var descriptor = serviceCollection.FirstOrDefault(d => d.ServiceType == type);
+            var service = serviceProvider.GetService(type);
+
+            // Assert
+            service.ShouldNotBeNull();
+            
+            if (type == typeof(IXyz))
+            {
+                service.ShouldBeOfType<FooBarBazWithTry>();
+                service.ShouldNotBeOfType<FooBarBaz>();
+            }
+            else
+            {
+                service.ShouldNotBeOfType<FooBarBazWithTry>();
+                service.ShouldBeOfType<FooBarBaz>();
+            }
+
+            descriptor.ShouldNotBeNull();
+            descriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
+        }
     }
 }
