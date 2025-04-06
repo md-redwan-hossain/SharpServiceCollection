@@ -11,23 +11,12 @@ dependency injection through attribute-based assembly scanning.
 ### Usage
 
 - `SharpServiceCollection` scans an assembly to automatically register services in the `IServiceCollection` container.
-- Use the `AddServicesBySharpServiceCollection` extension method of `IServiceCollection` to perform assembly scanning.
-- By default, it will scan the executing assembly using `Assembly.GetCallingAssembly()`, the method has an overload that
-  accepts an assembly.
+- Use one of the extension methods of `IServiceCollection` to perform assembly scanning.
+    - `AddServicesFromCurrentAssembly()`
+    - `AddServicesFromAssembly(Assembly assembly)`
+    - `AddServicesFromAssemblyContaining<T>()`
+    - `AddServicesFromAssemblyContaining(Type type)`
 
-```csharp
-using SharpServiceCollection.Extensions;
-
-var builder = WebApplication.CreateBuilder(args);
-
-// Default
-builder.Services.AddServicesBySharpServiceCollection();
-
-// Overload
-builder.Services.AddServicesBySharpServiceCollection(typeof(Program).Assembly);
-
-var app = builder.Build();
-```
 
 - `InstanceLifetime` is an Enum with the values `Singleton` `Scoped` `Transient`
 - `IServiceCollection` comes with `Add*` and `TryAdd*` methods. `SharpServiceCollection` offers the same functionality.
@@ -77,4 +66,40 @@ public class ScopedDependency : IScopedDependency
 public class FooBarBaz : IFoo, IBar, IBaz
 {
 }
+```
+
+### Example
+
+```csharp
+
+public interface IDemoService
+{
+    string Greet();
+}
+```
+
+```csharp
+[TryResolveByImplementedInterface(InstanceLifetime.Scoped)]
+public class DemoService : IDemoService
+{
+    public string Greet()
+    {
+        return "Hello World!";
+    }
+}
+```
+
+```csharp
+using SharpServiceCollection.Extensions;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Current assembly will be scanned by Assembly.GetCallingAssembly()
+builder.Services.AddServicesFromCurrentAssembly();
+
+var app = builder.Build();
+
+app.MapGet("/", (IDemoService demoService) => demoService.Greet());
+
+app.Run();
 ```
