@@ -27,6 +27,19 @@ public static class ServiceCollectionExtensions
         return AddServicesFromAssembly(services, Assembly.GetCallingAssembly());
     }
 
+    [Obsolete($"Use {nameof(AddServicesFromCurrentAssembly)}() method instead.", true)]
+    public static IServiceCollection AddServicesBySharpServiceCollection(this IServiceCollection services)
+    {
+        return AddServicesFromAssembly(services, Assembly.GetCallingAssembly());
+    }
+
+    [Obsolete($"Use {nameof(AddServicesFromAssembly)}(Assembly assembly) method instead.", true)]
+    public static IServiceCollection AddServicesBySharpServiceCollection(this IServiceCollection services,
+        Assembly assembly)
+    {
+        return AddServicesFromAssembly(services, assembly);
+    }
+    
     public static IServiceCollection AddServicesFromAssembly(this IServiceCollection services,
         Assembly assembly)
     {
