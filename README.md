@@ -12,11 +12,11 @@ dependency injection through attribute-based assembly scanning.
 
 - `SharpServiceCollection` scans an assembly to automatically register services in the `IServiceCollection` container.
 - Use one of the extension methods of `IServiceCollection` to perform assembly scanning.
-    - `AddServicesFromCurrentAssembly()`
-    - `AddServicesFromAssembly(Assembly assembly)`
-    - `AddServicesFromAssemblyContaining<T>()`
-    - `AddServicesFromAssemblyContaining(Type type)`
 
+  - `AddServicesFromCurrentAssembly()`
+  - `AddServicesFromAssembly(Assembly assembly)`
+  - `AddServicesFromAssemblyContaining<T>()`
+  - `AddServicesFromAssemblyContaining(Type type)`
 
 - `InstanceLifetime` is an Enum with the values `Singleton` `Scoped` `Transient`
 - `IServiceCollection` comes with `Add*` and `TryAdd*` methods. `SharpServiceCollection` offers the same functionality.
@@ -79,6 +79,9 @@ public interface IDemoService
 ```
 
 ```csharp
+using SharpServiceCollection.Attributes;
+using SharpServiceCollection.Enums;
+
 [TryResolveByImplementedInterface(InstanceLifetime.Scoped)]
 public class DemoService : IDemoService
 {
