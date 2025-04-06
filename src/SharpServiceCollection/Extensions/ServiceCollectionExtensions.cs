@@ -12,6 +12,16 @@ namespace SharpServiceCollection.Extensions;
 
 public static class ServiceCollectionExtensions
 {
+    public static IServiceCollection AddServicesFromAssemblyContaining<T>(this IServiceCollection services)
+    {
+        return AddServicesFromAssembly(services, typeof(T).Assembly);
+    }
+
+    public static IServiceCollection AddServicesFromAssemblyContaining(this IServiceCollection services, Type type)
+    {
+        return AddServicesFromAssembly(services, type.Assembly);
+    }
+
     public static IServiceCollection AddServicesFromCurrentAssembly(this IServiceCollection services)
     {
         return AddServicesFromAssembly(services, Assembly.GetCallingAssembly());
