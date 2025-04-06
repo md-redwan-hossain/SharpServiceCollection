@@ -12,12 +12,12 @@ namespace SharpServiceCollection.Extensions;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddServicesBySharpServiceCollection(this IServiceCollection services)
+    public static IServiceCollection AddServicesFromCurrentAssembly(this IServiceCollection services)
     {
-        return AddServicesBySharpServiceCollection(services, Assembly.GetCallingAssembly());
+        return AddServicesFromAssembly(services, Assembly.GetCallingAssembly());
     }
 
-    public static IServiceCollection AddServicesBySharpServiceCollection(this IServiceCollection services,
+    public static IServiceCollection AddServicesFromAssembly(this IServiceCollection services,
         Assembly assembly)
     {
         services = MapResolveBy(services, assembly);

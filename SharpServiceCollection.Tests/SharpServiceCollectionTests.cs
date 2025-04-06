@@ -19,7 +19,7 @@ public class SharpServiceCollectionTests
         var assembly = Assembly.GetExecutingAssembly();
 
         // Act
-        serviceCollection.AddServicesBySharpServiceCollection(assembly);
+        serviceCollection.AddServicesFromAssembly(assembly);
         var serviceProvider = serviceCollection.BuildServiceProvider();
         var descriptor = serviceCollection.FirstOrDefault(d => d.ServiceType == typeof(IScopedDependency));
 
@@ -40,7 +40,7 @@ public class SharpServiceCollectionTests
         var assembly = Assembly.GetExecutingAssembly();
 
         // Act
-        services.AddServicesBySharpServiceCollection(assembly);
+        services.AddServicesFromAssembly(assembly);
         var serviceProvider = services.BuildServiceProvider();
         var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ScopedDependency));
 
@@ -61,7 +61,7 @@ public class SharpServiceCollectionTests
         var assembly = Assembly.GetExecutingAssembly();
 
         // Act
-        serviceCollection.AddServicesBySharpServiceCollection(assembly);
+        serviceCollection.AddServicesFromAssembly(assembly);
         var serviceProvider = serviceCollection.BuildServiceProvider();
         var descriptor = serviceCollection.FirstOrDefault(d => d.ServiceType == typeof(ISingletonDependency));
 
@@ -82,7 +82,7 @@ public class SharpServiceCollectionTests
         var assembly = Assembly.GetExecutingAssembly();
 
         // Act
-        services.AddServicesBySharpServiceCollection(assembly);
+        services.AddServicesFromAssembly(assembly);
         var serviceProvider = services.BuildServiceProvider();
         var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(SingletonDependency));
 
@@ -103,7 +103,7 @@ public class SharpServiceCollectionTests
         var assembly = Assembly.GetExecutingAssembly();
 
         // Act
-        serviceCollection.AddServicesBySharpServiceCollection(assembly);
+        serviceCollection.AddServicesFromAssembly(assembly);
         var serviceProvider = serviceCollection.BuildServiceProvider();
         var descriptor = serviceCollection.FirstOrDefault(d => d.ServiceType == typeof(ITransientDependency));
 
@@ -124,7 +124,7 @@ public class SharpServiceCollectionTests
         var assembly = Assembly.GetExecutingAssembly();
 
         // Act
-        services.AddServicesBySharpServiceCollection(assembly);
+        services.AddServicesFromAssembly(assembly);
         var serviceProvider = services.BuildServiceProvider();
         var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(TransientDependency));
 
@@ -145,7 +145,7 @@ public class SharpServiceCollectionTests
         var assembly = Assembly.GetExecutingAssembly();
 
         // Act
-        serviceCollection.AddServicesBySharpServiceCollection(assembly);
+        serviceCollection.AddServicesFromAssembly(assembly);
         var serviceProvider = serviceCollection.BuildServiceProvider();
         var descriptor = serviceCollection.FirstOrDefault(d => d.ServiceType == typeof(IScopedDemoService));
 
@@ -166,7 +166,7 @@ public class SharpServiceCollectionTests
         var assembly = Assembly.GetExecutingAssembly();
 
         // Act
-        serviceCollection.AddServicesBySharpServiceCollection(assembly);
+        serviceCollection.AddServicesFromAssembly(assembly);
         var serviceProvider = serviceCollection.BuildServiceProvider();
         var descriptor = serviceCollection.FirstOrDefault(d => d.ServiceType == typeof(IKeyedScopedDemoService));
 
@@ -187,7 +187,7 @@ public class SharpServiceCollectionTests
         var assembly = Assembly.GetExecutingAssembly();
 
         // Act
-        serviceCollection.AddServicesBySharpServiceCollection(assembly);
+        serviceCollection.AddServicesFromAssembly(assembly);
         var serviceProvider = serviceCollection.BuildServiceProvider();
 
         // Assert
@@ -203,7 +203,7 @@ public class SharpServiceCollectionTests
         var assembly = Assembly.GetExecutingAssembly();
 
         // Act
-        serviceCollection.AddServicesBySharpServiceCollection(assembly);
+        serviceCollection.AddServicesFromAssembly(assembly);
         var serviceProvider = serviceCollection.BuildServiceProvider();
         var descriptor = serviceCollection.FirstOrDefault(d => d.ServiceType == typeof(ITryResolver));
 
@@ -225,7 +225,7 @@ public class SharpServiceCollectionTests
         var assembly = Assembly.GetExecutingAssembly();
 
         // Act
-        serviceCollection.AddServicesBySharpServiceCollection(assembly);
+        serviceCollection.AddServicesFromAssembly(assembly);
         var serviceProvider = serviceCollection.BuildServiceProvider();
         var descriptor = serviceCollection.FirstOrDefault(d => d.ServiceType == typeof(IResolver));
 
@@ -247,7 +247,7 @@ public class SharpServiceCollectionTests
         List<Type> types = [typeof(IFoo), typeof(IBar), typeof(IBaz)];
 
         // Act
-        serviceCollection.AddServicesBySharpServiceCollection(assembly);
+        serviceCollection.AddServicesFromAssembly(assembly);
         var serviceProvider = serviceCollection.BuildServiceProvider();
 
         foreach (var type in types)
@@ -273,7 +273,7 @@ public class SharpServiceCollectionTests
         List<Type> types = [typeof(IFoo), typeof(IBar), typeof(IBaz), typeof(IXyz)];
 
         // Act
-        serviceCollection.AddServicesBySharpServiceCollection(assembly);
+        serviceCollection.AddServicesFromAssembly(assembly);
         var serviceProvider = serviceCollection.BuildServiceProvider();
 
         foreach (var type in types)
