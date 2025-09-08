@@ -9,7 +9,7 @@ from [Nuget](https://www.nuget.org/packages/SharpServiceCollection)
 
 ### Introduction
 
-`SharpServiceCollection` is a lightweight C# library that wraps the `IServiceCollection interface to streamline
+`SharpServiceCollection` is a lightweight C# library that wraps the `IServiceCollection` interface to streamline
 dependency injection through attribute-based assembly scanning.
 
 ### Usage
