@@ -10,6 +10,29 @@ namespace SharpServiceCollection.Tests;
 public class SharpServiceCollectionTests
 {
     [Fact]
+    public void ScopedDependencyForInjectableBy()
+    {
+        // Arrange
+        var serviceCollection = new ServiceCollection();
+        var assembly = Assembly.GetExecutingAssembly();
+
+        // Act
+        serviceCollection.AddServicesFromAssembly(assembly);
+        var serviceProvider = serviceCollection.BuildServiceProvider();
+        
+        var descriptor = serviceCollection
+            .FirstOrDefault(d => d.ServiceType == typeof(IScopedDependencyForInjectableBy));
+
+        // Assert
+        var service = serviceProvider.GetService<IScopedDependencyForInjectableBy>();
+        service.ShouldNotBeNull();
+        service.ShouldBeOfType<ScopedDependencyForInjectableBy>();
+
+        descriptor.ShouldNotBeNull();
+        descriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
+    }
+    
+    [Fact]
     public void ScopedDependencyForInjectable_ResolveBy_Self()
     {
         // Arrange

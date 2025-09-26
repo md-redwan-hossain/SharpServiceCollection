@@ -84,10 +84,9 @@ public static class ServiceCollectionExtensions
             {
                 var resolverType = attribute.GetType().GetGenericArguments()[0];
 
-                if (attribute is not IServiceLifetime attributeWithLifetime ||
-                    attribute is not IServiceKey attributeWithServiceKey ||
-                    attribute is not IReplaceService attributeWithReplaceService ||
-                    string.IsNullOrEmpty(attributeWithServiceKey.Key))
+                if (attribute is not (IServiceLifetime attributeWithLifetime 
+                    and IServiceKey attributeWithServiceKey
+                    and IReplaceService attributeWithReplaceService))
                 {
                     continue;
                 }
