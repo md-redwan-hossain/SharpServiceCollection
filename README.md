@@ -42,14 +42,14 @@ strategies:
 [InjectableDependency(InstanceLifetime lifetime, ResolveBy resolveBy, string key)]
 ```
 
-**ResolveBy Options:**
+**`ResolveBy` Enum:**
 
 - `Self` - Resolves the class by itself
 - `ImplementedInterface` - Resolves by all implemented interfaces
 - `MatchingInterface` - Resolves by interface with matching name (e.g., `MyService` → `IMyService`)
 - `SelfAndReplace` - Same as `Self` but uses `Add*` methods (replaces existing)
-- `ImplementedInterfaceAndReplace` - Same as `ImplementedInterface` but replaces existing
-- `MatchingInterfaceAndReplace` - Same as `MatchingInterface` but replaces existing
+- `ImplementedInterfaceAndReplace` - Same as `ImplementedInterface` but uses `Add*` methods (replaces existing)
+- `MatchingInterfaceAndReplace` - Same as `MatchingInterface` but uses `Add*` methods (replaces existing)
 
 #### Generic Version
 
