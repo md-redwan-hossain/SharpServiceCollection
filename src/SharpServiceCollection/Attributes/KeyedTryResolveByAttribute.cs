@@ -1,10 +1,11 @@
 using System;
 using SharpServiceCollection.Enums;
+using SharpServiceCollection.Interfaces;
 
 namespace SharpServiceCollection.Attributes;
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
-public class KeyedTryResolveByAttribute<T> : Attribute
+public class KeyedTryResolveByAttribute<T> : Attribute, IServiceLifetime, IServiceKey
 {
     public InstanceLifetime Lifetime { get; }
     public string Key { get; }

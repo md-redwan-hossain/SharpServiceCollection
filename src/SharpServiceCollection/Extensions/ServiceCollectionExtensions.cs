@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using SharpServiceCollection.Attributes;
 using SharpServiceCollection.Enums;
+using SharpServiceCollection.Interfaces;
 
 namespace SharpServiceCollection.Extensions;
 
@@ -51,6 +52,7 @@ public static class ServiceCollectionExtensions
         MapInjectableDependencyMatchingInterface(ref services, typesWithAttribute);
         MapInjectableDependencyImplementedInterface(ref services, typesWithAttribute);
         MapInjectableDependencySelf(ref services, typesWithAttribute);
+        MapInjectableDependencyBy(ref services, assembly);
 
         MapResolveBy(ref services, assembly);
         MapKeyedResolveBy(ref services, assembly);
@@ -82,15 +84,18 @@ public static class ServiceCollectionExtensions
             {
                 var resolverType = attribute.GetType().GetGenericArguments()[0];
 
-                if (attribute is not IServiceMetadata attr)
+                if (attribute is not IServiceLifetime attributeWithLifetime ||
+                    attribute is not IServiceKey attributeWithServiceKey ||
+                    attribute is not IReplaceService attributeWithReplaceService ||
+                    string.IsNullOrEmpty(attributeWithServiceKey.Key))
                 {
                     continue;
                 }
 
                 // Replace and Non-Keyed
-                if (attr.Replace && string.IsNullOrEmpty(attr.Key))
+                if (attributeWithReplaceService.Replace && string.IsNullOrEmpty(attributeWithServiceKey.Key))
                 {
-                    switch (attr.Lifetime)
+                    switch (attributeWithLifetime.Lifetime)
                     {
                         case InstanceLifetime.Singleton:
                             services.AddSingleton(resolverType, implType);
@@ -106,10 +111,48 @@ public static class ServiceCollectionExtensions
                     }
                 }
 
-                // Non-Replace and Non-Keyed
-                if (!attr.Replace && string.IsNullOrEmpty(attr.Key))
+                // Non-Replace and Keyed
+                if (!attributeWithReplaceService.Replace && !string.IsNullOrEmpty(attributeWithServiceKey.Key))
                 {
-                    switch (attr.Lifetime)
+                    switch (attributeWithLifetime.Lifetime)
+                    {
+                        case InstanceLifetime.Singleton:
+                            services.TryAddKeyedSingleton(resolverType, attributeWithServiceKey.Key, implType);
+                            break;
+                        case InstanceLifetime.Scoped:
+                            services.TryAddKeyedScoped(resolverType, attributeWithServiceKey.Key, implType);
+                            break;
+                        case InstanceLifetime.Transient:
+                            services.TryAddKeyedTransient(resolverType, attributeWithServiceKey.Key, implType);
+                            break;
+                        default:
+                            throw new InvalidEnumArgumentException();
+                    }
+                }
+
+                // Replace and Keyed
+                if (!attributeWithReplaceService.Replace && !string.IsNullOrEmpty(attributeWithServiceKey.Key))
+                {
+                    switch (attributeWithLifetime.Lifetime)
+                    {
+                        case InstanceLifetime.Singleton:
+                            services.AddKeyedSingleton(resolverType, attributeWithServiceKey.Key, implType);
+                            break;
+                        case InstanceLifetime.Scoped:
+                            services.AddKeyedScoped(resolverType, attributeWithServiceKey.Key, implType);
+                            break;
+                        case InstanceLifetime.Transient:
+                            services.AddKeyedTransient(resolverType, attributeWithServiceKey.Key, implType);
+                            break;
+                        default:
+                            throw new InvalidEnumArgumentException();
+                    }
+                }
+
+                // Non-Replace and Non-Keyed
+                if (!attributeWithReplaceService.Replace && string.IsNullOrEmpty(attributeWithServiceKey.Key))
+                {
+                    switch (attributeWithLifetime.Lifetime)
                     {
                         case InstanceLifetime.Singleton:
                             services.TryAddSingleton(resolverType, implType);
@@ -119,44 +162,6 @@ public static class ServiceCollectionExtensions
                             break;
                         case InstanceLifetime.Transient:
                             services.TryAddTransient(resolverType, implType);
-                            break;
-                        default:
-                            throw new InvalidEnumArgumentException();
-                    }
-                }
-
-                // Replace and Keyed
-                if (!attr.Replace && !string.IsNullOrEmpty(attr.Key))
-                {
-                    switch (attr.Lifetime)
-                    {
-                        case InstanceLifetime.Singleton:
-                            services.AddKeyedSingleton(resolverType, attr.Key, implType);
-                            break;
-                        case InstanceLifetime.Scoped:
-                            services.AddKeyedScoped(resolverType, attr.Key, implType);
-                            break;
-                        case InstanceLifetime.Transient:
-                            services.AddKeyedTransient(resolverType, attr.Key, implType);
-                            break;
-                        default:
-                            throw new InvalidEnumArgumentException();
-                    }
-                }
-
-                // Non-Replace and Keyed
-                if (!attr.Replace && !string.IsNullOrEmpty(attr.Key))
-                {
-                    switch (attr.Lifetime)
-                    {
-                        case InstanceLifetime.Singleton:
-                            services.TryAddKeyedSingleton(resolverType, attr.Key, implType);
-                            break;
-                        case InstanceLifetime.Scoped:
-                            services.TryAddKeyedScoped(resolverType, attr.Key, implType);
-                            break;
-                        case InstanceLifetime.Transient:
-                            services.TryAddKeyedTransient(resolverType, attr.Key, implType);
                             break;
                         default:
                             throw new InvalidEnumArgumentException();
@@ -546,13 +551,9 @@ public static class ServiceCollectionExtensions
             {
                 var resolverType = attribute.GetType().GetGenericArguments()[0];
 
-                var lifetimeProperty = attribute.GetType()
-                    .GetProperty(nameof(ResolveByAttribute<byte>.Lifetime));
-
-
-                if (lifetimeProperty?.GetValue(attribute) is InstanceLifetime lifetime)
+                if (attribute is IServiceLifetime attributeWithLifetime)
                 {
-                    switch (lifetime)
+                    switch (attributeWithLifetime.Lifetime)
                     {
                         case InstanceLifetime.Singleton:
                             services.AddSingleton(resolverType, implType);
@@ -583,26 +584,19 @@ public static class ServiceCollectionExtensions
             {
                 var resolverType = attribute.GetType().GetGenericArguments()[0];
 
-                var lifetimeProperty = attribute.GetType()
-                    .GetProperty(nameof(KeyedResolveByAttribute<byte>.Lifetime));
-
-                var keyProperty = attribute.GetType()
-                    .GetProperty(nameof(KeyedResolveByAttribute<byte>.Key));
-
-
-                if (lifetimeProperty?.GetValue(attribute) is InstanceLifetime lifetime &&
-                    keyProperty?.GetValue(attribute) is string key && string.IsNullOrEmpty(key) is false)
+                if (attribute is IServiceLifetime attributeWithLifetime and IServiceKey attributeWithServiceKey &&
+                    !string.IsNullOrEmpty(attributeWithServiceKey.Key))
                 {
-                    switch (lifetime)
+                    switch (attributeWithLifetime.Lifetime)
                     {
                         case InstanceLifetime.Singleton:
-                            services.AddKeyedSingleton(resolverType, key, implType);
+                            services.AddKeyedSingleton(resolverType, attributeWithServiceKey.Key, implType);
                             break;
                         case InstanceLifetime.Scoped:
-                            services.AddKeyedScoped(resolverType, key, implType);
+                            services.AddKeyedScoped(resolverType, attributeWithServiceKey.Key, implType);
                             break;
                         case InstanceLifetime.Transient:
-                            services.AddKeyedTransient(resolverType, key, implType);
+                            services.AddKeyedTransient(resolverType, attributeWithServiceKey.Key, implType);
                             break;
                         default:
                             throw new InvalidEnumArgumentException();
@@ -695,12 +689,9 @@ public static class ServiceCollectionExtensions
             {
                 var resolverType = attribute.GetType().GetGenericArguments()[0];
 
-                var lifetimeProperty = attribute.GetType()
-                    .GetProperty(nameof(TryResolveByAttribute<byte>.Lifetime));
-
-                if (lifetimeProperty?.GetValue(attribute) is InstanceLifetime lifetime)
+                if (attribute is IServiceLifetime attributeWithLifetime)
                 {
-                    switch (lifetime)
+                    switch (attributeWithLifetime.Lifetime)
                     {
                         case InstanceLifetime.Singleton:
                             services.TryAddSingleton(resolverType, implType);
@@ -731,25 +722,19 @@ public static class ServiceCollectionExtensions
             {
                 var resolverType = attribute.GetType().GetGenericArguments()[0];
 
-                var lifetimeProperty = attribute.GetType()
-                    .GetProperty(nameof(KeyedTryResolveByAttribute<byte>.Lifetime));
-
-                var keyProperty = attribute.GetType()
-                    .GetProperty(nameof(KeyedTryResolveByAttribute<byte>.Key));
-
-                if (lifetimeProperty?.GetValue(attribute) is InstanceLifetime lifetime &&
-                    keyProperty?.GetValue(attribute) is string key && string.IsNullOrEmpty(key) is false)
+                if (attribute is IServiceLifetime attributeWithLifetime and IServiceKey attributeWithServiceKey &&
+                    !string.IsNullOrEmpty(attributeWithServiceKey.Key))
                 {
-                    switch (lifetime)
+                    switch (attributeWithLifetime.Lifetime)
                     {
                         case InstanceLifetime.Singleton:
-                            services.TryAddKeyedSingleton(resolverType, key, implType);
+                            services.TryAddKeyedSingleton(resolverType, attributeWithServiceKey.Key, implType);
                             break;
                         case InstanceLifetime.Scoped:
-                            services.TryAddKeyedScoped(resolverType, key, implType);
+                            services.TryAddKeyedScoped(resolverType, attributeWithServiceKey.Key, implType);
                             break;
                         case InstanceLifetime.Transient:
-                            services.TryAddKeyedTransient(resolverType, key, implType);
+                            services.TryAddKeyedTransient(resolverType, attributeWithServiceKey.Key, implType);
                             break;
                         default:
                             throw new InvalidEnumArgumentException();

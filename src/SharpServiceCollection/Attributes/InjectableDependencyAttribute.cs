@@ -1,11 +1,12 @@
 ﻿using System;
 using SharpServiceCollection.Enums;
 using SharpServiceCollection.Extensions;
+using SharpServiceCollection.Interfaces;
 
 namespace SharpServiceCollection.Attributes;
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
-public class InjectableDependencyAttribute : Attribute, IServiceMetadata
+public class InjectableDependencyAttribute : Attribute, IServiceLifetime, IServiceKey, IReplaceService
 {
     public InstanceLifetime Lifetime { get; }
     public ResolveBy ResolveBy { get; }
@@ -35,11 +36,11 @@ public class InjectableDependencyAttribute : Attribute, IServiceMetadata
     /// Specifies the dependency resolution approach.
     /// </param>
     ///    
-    /// <param name="key">
-    ///  /// Specifies the key by which the dependency will be resolved.
-    /// </param>
+    /// <param name="key">A unique string key used to resolve the instance. Must not be null or empty.</param>
+    /// <exception cref="ArgumentException">Thrown when the <paramref name="key"/> is null or empty.</exception>
     public InjectableDependencyAttribute(InstanceLifetime lifetime, ResolveBy resolveBy, string key)
     {
+        ArgumentException.ThrowIfNullOrEmpty(key);
         Lifetime = lifetime;
         ResolveBy = resolveBy;
         Key = key;

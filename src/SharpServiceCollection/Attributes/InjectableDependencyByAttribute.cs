@@ -1,11 +1,12 @@
 ﻿using System;
 using SharpServiceCollection.Enums;
 using SharpServiceCollection.Extensions;
+using SharpServiceCollection.Interfaces;
 
 namespace SharpServiceCollection.Attributes;
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
-public class InjectableDependencyByAttribute<T> : Attribute, IServiceMetadata
+public class InjectableDependencyByAttribute<T> : Attribute, IServiceLifetime, IServiceKey, IReplaceService
 {
     public InstanceLifetime Lifetime { get; }
     public bool Replace { get; }
@@ -44,11 +45,11 @@ public class InjectableDependencyByAttribute<T> : Attribute, IServiceMetadata
     ///  Indicates whether Try pattern will be used or not.
     /// </param>
     /// 
-    /// <param name="key">
-    ///  /// Specifies the key by which the dependency will be resolved.
-    /// </param>
+    /// <param name="key">A unique string key used to resolve the instance. Must not be null or empty.</param>
+    /// <exception cref="ArgumentException">Thrown when the <paramref name="key"/> is null or empty.</exception>
     public InjectableDependencyByAttribute(InstanceLifetime lifetime, bool replace, string key)
     {
+        ArgumentException.ThrowIfNullOrEmpty(key);
         Lifetime = lifetime;
         Replace = replace;
         Key = key;

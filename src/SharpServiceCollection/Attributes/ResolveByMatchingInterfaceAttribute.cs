@@ -1,10 +1,11 @@
 using System;
 using SharpServiceCollection.Enums;
+using SharpServiceCollection.Interfaces;
 
 namespace SharpServiceCollection.Attributes;
 
 [AttributeUsage(AttributeTargets.Class)]
-public class ResolveByMatchingInterfaceAttribute : Attribute
+public class ResolveByMatchingInterfaceAttribute : Attribute, IServiceLifetime
 {
     public InstanceLifetime Lifetime { get; }
 
