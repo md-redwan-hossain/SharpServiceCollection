@@ -10,7 +10,7 @@ namespace SharpServiceCollection.Tests;
 public class SharpServiceCollectionTests
 {
     [Fact]
-    public void ScopedDependency_ResolveBySelf_InjectableDependency()
+    public void ScopedDependencyForInjectable_ResolveBy_Self()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -19,12 +19,12 @@ public class SharpServiceCollectionTests
         // Act
         services.AddServicesFromAssembly(assembly);
         var serviceProvider = services.BuildServiceProvider();
-        var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ScopedDependency));
+        var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ScopedDependencyForInjectable));
 
         // Assert
-        var service = serviceProvider.GetService<ScopedDependency>();
+        var service = serviceProvider.GetService<ScopedDependencyForInjectable>();
         service.ShouldNotBeNull();
-        service.ShouldBeOfType<ScopedDependency>();
+        service.ShouldBeOfType<ScopedDependencyForInjectable>();
 
         descriptor.ShouldNotBeNull();
         descriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
@@ -40,17 +40,19 @@ public class SharpServiceCollectionTests
         // Act
         serviceCollection.AddServicesFromAssembly(assembly);
         var serviceProvider = serviceCollection.BuildServiceProvider();
-        var descriptor = serviceCollection.FirstOrDefault(d => d.ServiceType == typeof(IScopedDependency));
+
+        var descriptor = serviceCollection
+            .FirstOrDefault(d => d.ServiceType == typeof(IScopedDependencyForInjectable));
 
         // Assert
-        var service = serviceProvider.GetService<IScopedDependency>();
+        var service = serviceProvider.GetService<IScopedDependencyForInjectable>();
         service.ShouldNotBeNull();
         service.ShouldBeOfType<ScopedDependencyForInjectable>();
 
         descriptor.ShouldNotBeNull();
         descriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
     }
-    
+
     [Fact]
     public void ScopedDependency_ResolveByMatchingInterface()
     {

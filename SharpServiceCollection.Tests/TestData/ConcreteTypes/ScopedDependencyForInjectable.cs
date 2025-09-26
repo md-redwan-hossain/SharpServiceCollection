@@ -6,7 +6,7 @@ namespace SharpServiceCollection.Tests.TestData.ConcreteTypes;
 
 [InjectableDependency(InstanceLifetime.Scoped, ResolveBy.MatchingInterface)]
 [InjectableDependency(InstanceLifetime.Scoped, ResolveBy.Self)]
-public class ScopedDependencyForInjectable: IScopedDependency   
+public class ScopedDependencyForInjectable: IScopedDependencyForInjectable   
 {
     
 }
