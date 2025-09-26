@@ -43,6 +43,14 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddServicesFromAssembly(this IServiceCollection services,
         Assembly assembly)
     {
+        var typesWithAttribute = assembly.GetTypes()
+            .Where(t => t.GetCustomAttribute<InjectableDependencyAttribute>() is not null)
+            .OrderBy(t => t.Name).ToList();
+
+        services = MapInjectableDependencyMatchingInterface(services, typesWithAttribute);
+        services = MapInjectableDependencyImplementedInterface(services, typesWithAttribute);
+        services = MapInjectableDependencySelf(services, typesWithAttribute);
+
         services = MapResolveBy(services, assembly);
         services = MapKeyedResolveBy(services, assembly);
 
@@ -61,13 +69,9 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    private static IServiceCollection MapNonGenericInjectableDependency(IServiceCollection services,
-        Assembly assembly)
+    private static IServiceCollection MapInjectableDependencyImplementedInterface(IServiceCollection services,
+        List<Type> typesWithAttribute)
     {
-        var typesWithAttribute = assembly.GetTypes()
-            .Where(t => t.GetCustomAttribute<InjectableDependencyAttribute>() is not null)
-            .OrderBy(t => t.Name);
-
         foreach (var implType in typesWithAttribute)
         {
             var attribute = implType.GetCustomAttribute<InjectableDependencyAttribute>();
@@ -162,6 +166,194 @@ public static class ServiceCollectionExtensions
             }
         }
 
+        return services;
+    }
+
+    private static IServiceCollection MapInjectableDependencyMatchingInterface(IServiceCollection services,
+        List<Type> typesWithAttribute)
+    {
+        foreach (var implType in typesWithAttribute)
+        {
+            var attribute = implType.GetCustomAttribute<InjectableDependencyAttribute>();
+            var interfaceName = $"I{implType.Name}";
+            var interfaceType = implType.GetInterface(interfaceName);
+
+            if (interfaceType is null || attribute is null || interfaceType.IsAssignableFrom(implType))
+            {
+                continue;
+            }
+
+            // MatchingInterfaceAndReplace, Keyed
+            if (attribute.ResolveBy == ResolveBy.MatchingInterfaceAndReplace &&
+                !string.IsNullOrEmpty(attribute.Key) && interfaceType.IsAssignableFrom(implType))
+            {
+                switch (attribute.Lifetime)
+                {
+                    case InstanceLifetime.Singleton:
+                        services.AddKeyedSingleton(interfaceType, attribute.Key, implType);
+                        break;
+                    case InstanceLifetime.Scoped:
+                        services.AddKeyedScoped(interfaceType, attribute.Key, implType);
+                        break;
+                    case InstanceLifetime.Transient:
+                        services.AddKeyedTransient(interfaceType, attribute.Key, implType);
+                        break;
+                    default:
+                        throw new InvalidEnumArgumentException();
+                }
+            }
+
+            // MatchingInterface, Keyed
+            if (attribute.ResolveBy == ResolveBy.MatchingInterface &&
+                !string.IsNullOrEmpty(attribute.Key) && interfaceType.IsAssignableFrom(implType))
+            {
+                switch (attribute.Lifetime)
+                {
+                    case InstanceLifetime.Singleton:
+                        services.TryAddKeyedSingleton(interfaceType, attribute.Key, implType);
+                        break;
+                    case InstanceLifetime.Scoped:
+                        services.TryAddKeyedScoped(interfaceType, attribute.Key, implType);
+                        break;
+                    case InstanceLifetime.Transient:
+                        services.TryAddKeyedTransient(interfaceType, attribute.Key, implType);
+                        break;
+                    default:
+                        throw new InvalidEnumArgumentException();
+                }
+            }
+
+            // MatchingInterfaceAndReplace, Non-Keyed
+            if (attribute.ResolveBy == ResolveBy.MatchingInterfaceAndReplace &&
+                string.IsNullOrEmpty(attribute.Key) && interfaceType.IsAssignableFrom(implType))
+            {
+                switch (attribute.Lifetime)
+                {
+                    case InstanceLifetime.Singleton:
+                        services.AddSingleton(interfaceType, implType);
+                        break;
+                    case InstanceLifetime.Scoped:
+                        services.AddScoped(interfaceType, implType);
+                        break;
+                    case InstanceLifetime.Transient:
+                        services.AddTransient(interfaceType, implType);
+                        break;
+                    default:
+                        throw new InvalidEnumArgumentException();
+                }
+            }
+
+            // MatchingInterface, Non-Keyed
+            if (attribute.ResolveBy == ResolveBy.MatchingInterface &&
+                string.IsNullOrEmpty(attribute.Key) && interfaceType.IsAssignableFrom(implType))
+            {
+                switch (attribute.Lifetime)
+                {
+                    case InstanceLifetime.Singleton:
+                        services.TryAddSingleton(interfaceType, implType);
+                        break;
+                    case InstanceLifetime.Scoped:
+                        services.TryAddScoped(interfaceType, implType);
+                        break;
+                    case InstanceLifetime.Transient:
+                        services.TryAddTransient(interfaceType, implType);
+                        break;
+                    default:
+                        throw new InvalidEnumArgumentException();
+                }
+            }
+        }
+
+        return services;
+    }
+
+    private static IServiceCollection MapInjectableDependencySelf(IServiceCollection services,
+        List<Type> typesWithAttribute)
+    {
+        foreach (var implType in typesWithAttribute)
+        {
+            var attributes = implType.GetCustomAttributes(typeof(InjectableDependencyAttribute), inherit: false)
+                .Cast<InjectableDependencyAttribute>();
+
+            foreach (var attribute in attributes)
+            {
+                // SelfAndReplace, Keyed
+                if (attribute.ResolveBy == ResolveBy.SelfAndReplace && !string.IsNullOrEmpty(attribute.Key))
+                {
+                    switch (attribute.Lifetime)
+                    {
+                        case InstanceLifetime.Singleton:
+                            services.AddKeyedSingleton(attribute.Key, implType);
+                            break;
+                        case InstanceLifetime.Scoped:
+                            services.AddKeyedScoped(implType, attribute.Key);
+                            break;
+                        case InstanceLifetime.Transient:
+                            services.AddKeyedTransient(implType, attribute.Key);
+                            break;
+                        default:
+                            throw new InvalidEnumArgumentException();
+                    }
+                }
+
+                // MatchingInterface, Keyed
+                if (attribute.ResolveBy == ResolveBy.Self && !string.IsNullOrEmpty(attribute.Key))
+                {
+                    switch (attribute.Lifetime)
+                    {
+                        case InstanceLifetime.Singleton:
+                            services.TryAddKeyedSingleton(attribute.Key, implType);
+                            break;
+                        case InstanceLifetime.Scoped:
+                            services.TryAddKeyedScoped(implType, attribute.Key);
+                            break;
+                        case InstanceLifetime.Transient:
+                            services.TryAddKeyedTransient(implType, attribute.Key);
+                            break;
+                        default:
+                            throw new InvalidEnumArgumentException();
+                    }
+                }
+
+                // SelfAndReplace, Non-Keyed
+                if (attribute.ResolveBy == ResolveBy.SelfAndReplace && string.IsNullOrEmpty(attribute.Key))
+                {
+                    switch (attribute.Lifetime)
+                    {
+                        case InstanceLifetime.Singleton:
+                            services.AddSingleton(implType);
+                            break;
+                        case InstanceLifetime.Scoped:
+                            services.AddScoped(implType);
+                            break;
+                        case InstanceLifetime.Transient:
+                            services.AddTransient(implType);
+                            break;
+                        default:
+                            throw new InvalidEnumArgumentException();
+                    }
+                }
+
+                // MatchingInterface, Non-Keyed
+                if (attribute.ResolveBy == ResolveBy.Self && string.IsNullOrEmpty(attribute.Key))
+                {
+                    switch (attribute.Lifetime)
+                    {
+                        case InstanceLifetime.Singleton:
+                            services.TryAddSingleton(implType);
+                            break;
+                        case InstanceLifetime.Scoped:
+                            services.TryAddScoped(implType);
+                            break;
+                        case InstanceLifetime.Transient:
+                            services.TryAddTransient(implType);
+                            break;
+                        default:
+                            throw new InvalidEnumArgumentException();
+                    }
+                }
+            }
+        }
 
         return services;
     }
