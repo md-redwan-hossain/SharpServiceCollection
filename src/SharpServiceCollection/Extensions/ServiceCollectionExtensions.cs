@@ -48,29 +48,29 @@ public static class ServiceCollectionExtensions
             .OrderBy(t => t.Name)
             .ToList();
 
-        services = MapInjectableDependencyMatchingInterface(services, typesWithAttribute);
-        services = MapInjectableDependencyImplementedInterface(services, typesWithAttribute);
-        services = MapInjectableDependencySelf(services, typesWithAttribute);
+        MapInjectableDependencyMatchingInterface(ref services, typesWithAttribute);
+        MapInjectableDependencyImplementedInterface(ref services, typesWithAttribute);
+        MapInjectableDependencySelf(ref services, typesWithAttribute);
 
-        services = MapResolveBy(services, assembly);
-        services = MapKeyedResolveBy(services, assembly);
+        MapResolveBy(ref services, assembly);
+        MapKeyedResolveBy(ref services, assembly);
 
-        services = MapTryResolveBy(services, assembly);
-        services = MapKeyedTryResolveBy(services, assembly);
+        MapTryResolveBy(ref services, assembly);
+        MapKeyedTryResolveBy(ref services, assembly);
 
-        services = MapResolveByMatchingInterface(services, assembly);
-        services = MapTryResolveByMatchingInterface(services, assembly);
+        MapResolveByMatchingInterface(ref services, assembly);
+        MapTryResolveByMatchingInterface(ref services, assembly);
 
-        services = MapResolveBySelf(services, assembly);
-        services = MapTryResolveBySelf(services, assembly);
+        MapResolveBySelf(ref services, assembly);
+        MapTryResolveBySelf(ref services, assembly);
 
-        services = MapResolveByImplementedInterface(services, assembly);
-        services = MapTryResolveByImplementedInterface(services, assembly);
+        MapResolveByImplementedInterface(ref services, assembly);
+        MapTryResolveByImplementedInterface(ref services, assembly);
 
         return services;
     }
 
-    private static IServiceCollection MapInjectableDependencyImplementedInterface(IServiceCollection services,
+    private static void MapInjectableDependencyImplementedInterface(ref IServiceCollection services,
         List<Type> typesWithAttribute)
     {
         foreach (var implType in typesWithAttribute)
@@ -170,11 +170,9 @@ public static class ServiceCollectionExtensions
                 }
             }
         }
-
-        return services;
     }
 
-    private static IServiceCollection MapInjectableDependencyMatchingInterface(IServiceCollection services,
+    private static void MapInjectableDependencyMatchingInterface(ref IServiceCollection services,
         List<Type> typesWithAttribute)
     {
         foreach (var implType in typesWithAttribute)
@@ -272,11 +270,9 @@ public static class ServiceCollectionExtensions
                 }
             }
         }
-
-        return services;
     }
 
-    private static IServiceCollection MapInjectableDependencySelf(IServiceCollection services,
+    private static void MapInjectableDependencySelf(ref IServiceCollection services,
         List<Type> typesWithAttribute)
     {
         foreach (var implType in typesWithAttribute)
@@ -363,11 +359,10 @@ public static class ServiceCollectionExtensions
                 }
             }
         }
-
-        return services;
     }
 
-    private static IServiceCollection MapResolveByImplementedInterface(IServiceCollection services, Assembly assembly)
+    private static void MapResolveByImplementedInterface(ref IServiceCollection services,
+        Assembly assembly)
     {
         var typesWithAttribute = assembly.GetTypes()
             .Where(t => t.GetCustomAttributes<ResolveByImplementedInterfaceAttribute>().Any())
@@ -402,11 +397,9 @@ public static class ServiceCollectionExtensions
                 }
             }
         }
-
-        return services;
     }
 
-    private static IServiceCollection MapTryResolveByImplementedInterface(IServiceCollection services,
+    private static void MapTryResolveByImplementedInterface(ref IServiceCollection services,
         Assembly assembly)
     {
         var typesWithAttribute = assembly.GetTypes()
@@ -442,12 +435,10 @@ public static class ServiceCollectionExtensions
                 }
             }
         }
-
-        return services;
     }
 
 
-    private static IServiceCollection MapResolveBy(IServiceCollection services, Assembly assembly)
+    private static void MapResolveBy(ref IServiceCollection services, Assembly assembly)
     {
         var typesWithAttribute = GetGenericAttributes(assembly, typeof(ResolveByAttribute<>));
 
@@ -482,11 +473,9 @@ public static class ServiceCollectionExtensions
                 }
             }
         }
-
-        return services;
     }
 
-    private static IServiceCollection MapKeyedResolveBy(IServiceCollection services, Assembly assembly)
+    private static void MapKeyedResolveBy(ref IServiceCollection services, Assembly assembly)
     {
         var typesWithAttribute = GetGenericAttributes(assembly, typeof(KeyedResolveByAttribute<>));
 
@@ -525,11 +514,9 @@ public static class ServiceCollectionExtensions
                 }
             }
         }
-
-        return services;
     }
 
-    private static IServiceCollection MapResolveByMatchingInterface(IServiceCollection services, Assembly assembly)
+    private static void MapResolveByMatchingInterface(ref IServiceCollection services, Assembly assembly)
     {
         var typesWithAttribute = assembly.GetTypes()
             .Where(t => t.GetCustomAttributes<ResolveByMatchingInterfaceAttribute>().Any())
@@ -562,11 +549,10 @@ public static class ServiceCollectionExtensions
                 }
             }
         }
-
-        return services;
     }
 
-    private static IServiceCollection MapTryResolveByMatchingInterface(IServiceCollection services, Assembly assembly)
+    private static void MapTryResolveByMatchingInterface(ref IServiceCollection services,
+        Assembly assembly)
     {
         var typesWithAttribute = assembly.GetTypes()
             .Where(t => t.GetCustomAttributes<TryResolveByMatchingInterfaceAttribute>().Any())
@@ -599,11 +585,9 @@ public static class ServiceCollectionExtensions
                 }
             }
         }
-
-        return services;
     }
 
-    private static IServiceCollection MapTryResolveBy(IServiceCollection services, Assembly assembly)
+    private static void MapTryResolveBy(ref IServiceCollection services, Assembly assembly)
     {
         var typesWithAttribute = GetGenericAttributes(assembly, typeof(TryResolveByAttribute<>));
 
@@ -637,11 +621,9 @@ public static class ServiceCollectionExtensions
                 }
             }
         }
-
-        return services;
     }
 
-    private static IServiceCollection MapKeyedTryResolveBy(IServiceCollection services, Assembly assembly)
+    private static void MapKeyedTryResolveBy(ref IServiceCollection services, Assembly assembly)
     {
         var typesWithAttribute = GetGenericAttributes(assembly, typeof(KeyedTryResolveByAttribute<>));
 
@@ -679,11 +661,9 @@ public static class ServiceCollectionExtensions
                 }
             }
         }
-
-        return services;
     }
 
-    private static IServiceCollection MapResolveBySelf(IServiceCollection services, Assembly assembly)
+    private static void MapResolveBySelf(ref IServiceCollection services, Assembly assembly)
     {
         var typesWithResolveFromSelf = assembly.GetTypes()
             .Where(t => t.GetCustomAttributes(typeof(ResolveBySelfAttribute), false).Length != 0);
@@ -712,11 +692,9 @@ public static class ServiceCollectionExtensions
                 }
             }
         }
-
-        return services;
     }
 
-    private static IServiceCollection MapTryResolveBySelf(IServiceCollection services, Assembly assembly)
+    private static void MapTryResolveBySelf(ref IServiceCollection services, Assembly assembly)
     {
         var typesWithResolveFromSelf = assembly.GetTypes()
             .Where(t => t.GetCustomAttributes(typeof(TryResolveBySelfAttribute), false).Length != 0);
@@ -745,8 +723,6 @@ public static class ServiceCollectionExtensions
                 }
             }
         }
-
-        return services;
     }
 
     private static IEnumerable<Type> GetGenericAttributes(Assembly assembly, Type targetType)
