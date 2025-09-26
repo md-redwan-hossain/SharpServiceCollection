@@ -52,7 +52,7 @@ public static class ServiceCollectionExtensions
         MapInjectableDependencyMatchingInterface(ref services, typesWithAttribute);
         MapInjectableDependencyImplementedInterface(ref services, typesWithAttribute);
         MapInjectableDependencySelf(ref services, typesWithAttribute);
-        MapInjectableDependencyBy(ref services, assembly);
+        MapInjectableDependencyGeneric(ref services, assembly);
 
         MapResolveBy(ref services, assembly);
         MapKeyedResolveBy(ref services, assembly);
@@ -72,13 +72,13 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    private static void MapInjectableDependencyBy(ref IServiceCollection services, Assembly assembly)
-    {
-        var typesWithAttribute = GetGenericAttributes(assembly, typeof(InjectableDependencyByAttribute<>));
+    private static void MapInjectableDependencyGeneric(ref IServiceCollection services, Assembly assembly)
+    {   
+        var typesWithAttribute = GetGenericAttributes(assembly, typeof(InjectableDependencyAttribute<>));
 
         foreach (var implType in typesWithAttribute)
         {
-            var attributes = GetAttributeImplementations(implType, typeof(InjectableDependencyByAttribute<>));
+            var attributes = GetAttributeImplementations(implType, typeof(InjectableDependencyAttribute<>));
 
             foreach (var attribute in attributes)
             {

@@ -19,19 +19,42 @@ public class SharpServiceCollectionTests
         // Act
         serviceCollection.AddServicesFromAssembly(assembly);
         var serviceProvider = serviceCollection.BuildServiceProvider();
-        
+
         var descriptor = serviceCollection
-            .FirstOrDefault(d => d.ServiceType == typeof(IScopedDependencyForInjectableBy));
+            .FirstOrDefault(d => d.ServiceType == typeof(IScopedDependencyForInjectableGeneric));
 
         // Assert
-        var service = serviceProvider.GetService<IScopedDependencyForInjectableBy>();
+        var service = serviceProvider.GetService<IScopedDependencyForInjectableGeneric>();
         service.ShouldNotBeNull();
-        service.ShouldBeOfType<ScopedDependencyForInjectableBy>();
+        service.ShouldBeOfType<ScopedDependencyForInjectableGeneric>();
 
         descriptor.ShouldNotBeNull();
         descriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
     }
-    
+
+    [Fact]
+    public void ScopedDependencyForInjectableBy_Keyed()
+    {
+        // Arrange
+        var serviceCollection = new ServiceCollection();
+        var assembly = Assembly.GetExecutingAssembly();
+
+        // Act
+        serviceCollection.AddServicesFromAssembly(assembly);
+        var serviceProvider = serviceCollection.BuildServiceProvider();
+
+        var descriptor = serviceCollection
+            .FirstOrDefault(d => d.ServiceType == typeof(IScopedDependencyForInjectableGeneric));
+
+        // Assert
+        var service = serviceProvider.GetKeyedService<IScopedDependencyForInjectableGeneric>("key");
+        service.ShouldNotBeNull();
+        service.ShouldBeOfType<ScopedDependencyForInjectableGeneric>();
+
+        descriptor.ShouldNotBeNull();
+        descriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
+    }
+
     [Fact]
     public void ScopedDependencyForInjectable_ResolveBy_Self()
     {

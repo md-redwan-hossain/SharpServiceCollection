@@ -1,5 +1,5 @@
 ﻿namespace SharpServiceCollection.Tests.TestData.Interfaces;
 
-public interface IScopedDependencyForInjectableBy
+public interface IScopedDependencyForInjectableGeneric
 {
 }
