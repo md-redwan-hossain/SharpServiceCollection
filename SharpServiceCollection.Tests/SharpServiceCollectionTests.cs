@@ -1,16 +1,104 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using SharpServiceCollection.Extensions;
-using SharpServiceCollection.Tests.TestData.AnyInterfaceResolve;
-using SharpServiceCollection.Tests.TestData.TryVsNonTry;
-using SharpServiceCollection.Tests.TestData.WithConventionalName;
-using SharpServiceCollection.Tests.TestData.WithoutConventionalName;
+using SharpServiceCollection.Tests.TestData.ConcreteTypes;
+using SharpServiceCollection.Tests.TestData.Interfaces;
 using Shouldly;
 
 namespace SharpServiceCollection.Tests;
 
 public class SharpServiceCollectionTests
 {
+    [Fact]
+    public void ScopedDependencyForInjectableBy()
+    {
+        // Arrange
+        var serviceCollection = new ServiceCollection();
+        var assembly = Assembly.GetExecutingAssembly();
+
+        // Act
+        serviceCollection.AddServicesFromAssembly(assembly);
+        var serviceProvider = serviceCollection.BuildServiceProvider();
+
+        var descriptor = serviceCollection
+            .FirstOrDefault(d => d.ServiceType == typeof(IScopedDependencyForInjectableGeneric));
+
+        // Assert
+        var service = serviceProvider.GetService<IScopedDependencyForInjectableGeneric>();
+        service.ShouldNotBeNull();
+        service.ShouldBeOfType<ScopedDependencyForInjectableGeneric>();
+
+        descriptor.ShouldNotBeNull();
+        descriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void ScopedDependencyForInjectableBy_Keyed()
+    {
+        // Arrange
+        var serviceCollection = new ServiceCollection();
+        var assembly = Assembly.GetExecutingAssembly();
+
+        // Act
+        serviceCollection.AddServicesFromAssembly(assembly);
+        var serviceProvider = serviceCollection.BuildServiceProvider();
+
+        var descriptor = serviceCollection
+            .FirstOrDefault(d => d.ServiceType == typeof(IScopedDependencyForInjectableGeneric));
+
+        // Assert
+        var service = serviceProvider.GetKeyedService<IScopedDependencyForInjectableGeneric>("key");
+        service.ShouldNotBeNull();
+        service.ShouldBeOfType<ScopedDependencyForInjectableGeneric>();
+
+        descriptor.ShouldNotBeNull();
+        descriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void ScopedDependencyForInjectable_ResolveBy_Self()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var assembly = Assembly.GetExecutingAssembly();
+
+        // Act
+        services.AddServicesFromAssembly(assembly);
+        var serviceProvider = services.BuildServiceProvider();
+        var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ScopedDependencyForInjectable));
+
+        // Assert
+        var service = serviceProvider.GetService<ScopedDependencyForInjectable>();
+        service.ShouldNotBeNull();
+        service.ShouldBeOfType<ScopedDependencyForInjectable>();
+
+        descriptor.ShouldNotBeNull();
+        descriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void ScopedDependencyForInjectable_ResolveBy_MatchingInterface()
+    {
+        // Arrange
+        var serviceCollection = new ServiceCollection();
+        var assembly = Assembly.GetExecutingAssembly();
+
+        // Act
+        serviceCollection.AddServicesFromAssembly(assembly);
+        var serviceProvider = serviceCollection.BuildServiceProvider();
+
+        var descriptor = serviceCollection
+            .FirstOrDefault(d => d.ServiceType == typeof(IScopedDependencyForInjectable));
+
+        // Assert
+        var service = serviceProvider.GetService<IScopedDependencyForInjectable>();
+        service.ShouldNotBeNull();
+        service.ShouldBeOfType<ScopedDependencyForInjectable>();
+
+        descriptor.ShouldNotBeNull();
+        descriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
+    }
+
     [Fact]
     public void ScopedDependency_ResolveByMatchingInterface()
     {
@@ -283,7 +371,7 @@ public class SharpServiceCollectionTests
 
             // Assert
             service.ShouldNotBeNull();
-            
+
             if (type == typeof(IXyz))
             {
                 service.ShouldBeOfType<FooBarBazWithTry>();
