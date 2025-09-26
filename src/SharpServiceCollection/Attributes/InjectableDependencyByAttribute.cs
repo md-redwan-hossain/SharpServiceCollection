@@ -3,6 +3,7 @@ using SharpServiceCollection.Enums;
 
 namespace SharpServiceCollection.Attributes;
 
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
 public class InjectableDependencyByAttribute<T> : Attribute
 {
     public InstanceLifetime Lifetime { get; }
