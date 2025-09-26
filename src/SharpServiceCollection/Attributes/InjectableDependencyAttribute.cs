@@ -1,6 +1,5 @@
 ﻿using System;
 using SharpServiceCollection.Enums;
-using SharpServiceCollection.Extensions;
 using SharpServiceCollection.Interfaces;
 
 namespace SharpServiceCollection.Attributes;
