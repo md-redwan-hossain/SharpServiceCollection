@@ -1,13 +1,15 @@
 ﻿using System;
 using SharpServiceCollection.Enums;
+using SharpServiceCollection.Extensions;
 
 namespace SharpServiceCollection.Attributes;
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
-public class InjectableDependencyAttribute : Attribute
+public class InjectableDependencyAttribute : Attribute, IServiceMetadata
 {
     public InstanceLifetime Lifetime { get; }
     public ResolveBy ResolveBy { get; }
+    public bool Replace { get; }
     public string Key { get; }
 
     /// <param name="lifetime">

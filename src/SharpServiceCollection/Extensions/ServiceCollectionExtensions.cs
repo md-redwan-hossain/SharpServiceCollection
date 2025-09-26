@@ -70,6 +70,102 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
+    private static void MapInjectableDependencyBy(ref IServiceCollection services, Assembly assembly)
+    {
+        var typesWithAttribute = GetGenericAttributes(assembly, typeof(InjectableDependencyByAttribute<>));
+
+        foreach (var implType in typesWithAttribute)
+        {
+            var attributes = GetAttributeImplementations(implType, typeof(InjectableDependencyByAttribute<>));
+
+            foreach (var attribute in attributes)
+            {
+                var resolverType = attribute.GetType().GetGenericArguments()[0];
+
+                if (attribute is not IServiceMetadata attr)
+                {
+                    continue;
+                }
+
+                // Replace and Non-Keyed
+                if (attr.Replace && string.IsNullOrEmpty(attr.Key))
+                {
+                    switch (attr.Lifetime)
+                    {
+                        case InstanceLifetime.Singleton:
+                            services.AddSingleton(resolverType, implType);
+                            break;
+                        case InstanceLifetime.Scoped:
+                            services.AddScoped(resolverType, implType);
+                            break;
+                        case InstanceLifetime.Transient:
+                            services.AddTransient(resolverType, implType);
+                            break;
+                        default:
+                            throw new InvalidEnumArgumentException();
+                    }
+                }
+
+                // Non-Replace and Non-Keyed
+                if (!attr.Replace && string.IsNullOrEmpty(attr.Key))
+                {
+                    switch (attr.Lifetime)
+                    {
+                        case InstanceLifetime.Singleton:
+                            services.TryAddSingleton(resolverType, implType);
+                            break;
+                        case InstanceLifetime.Scoped:
+                            services.TryAddScoped(resolverType, implType);
+                            break;
+                        case InstanceLifetime.Transient:
+                            services.TryAddTransient(resolverType, implType);
+                            break;
+                        default:
+                            throw new InvalidEnumArgumentException();
+                    }
+                }
+
+                // Replace and Keyed
+                if (!attr.Replace && !string.IsNullOrEmpty(attr.Key))
+                {
+                    switch (attr.Lifetime)
+                    {
+                        case InstanceLifetime.Singleton:
+                            services.AddKeyedSingleton(resolverType, attr.Key, implType);
+                            break;
+                        case InstanceLifetime.Scoped:
+                            services.AddKeyedScoped(resolverType, attr.Key, implType);
+                            break;
+                        case InstanceLifetime.Transient:
+                            services.AddKeyedTransient(resolverType, attr.Key, implType);
+                            break;
+                        default:
+                            throw new InvalidEnumArgumentException();
+                    }
+                }
+
+                // Non-Replace and Keyed
+                if (!attr.Replace && !string.IsNullOrEmpty(attr.Key))
+                {
+                    switch (attr.Lifetime)
+                    {
+                        case InstanceLifetime.Singleton:
+                            services.TryAddKeyedSingleton(resolverType, attr.Key, implType);
+                            break;
+                        case InstanceLifetime.Scoped:
+                            services.TryAddKeyedScoped(resolverType, attr.Key, implType);
+                            break;
+                        case InstanceLifetime.Transient:
+                            services.TryAddKeyedTransient(resolverType, attr.Key, implType);
+                            break;
+                        default:
+                            throw new InvalidEnumArgumentException();
+                    }
+                }
+            }
+        }
+    }
+
     private static void MapInjectableDependencyImplementedInterface(ref IServiceCollection services,
         List<Type> typesWithAttribute)
     {
