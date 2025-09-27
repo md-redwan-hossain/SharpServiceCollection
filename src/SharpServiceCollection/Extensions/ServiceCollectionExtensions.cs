@@ -73,7 +73,7 @@ public static class ServiceCollectionExtensions
     }
 
     private static void MapInjectableDependencyGeneric(ref IServiceCollection services, Assembly assembly)
-    {   
+    {
         var typesWithAttribute = GetGenericAttributes(assembly, typeof(InjectableDependencyAttribute<>));
 
         foreach (var implType in typesWithAttribute)
@@ -84,7 +84,7 @@ public static class ServiceCollectionExtensions
             {
                 var resolverType = attribute.GetType().GetGenericArguments()[0];
 
-                if (attribute is not (IServiceLifetime attributeWithLifetime 
+                if (attribute is not (IServiceLifetime attributeWithLifetime
                     and IServiceKey attributeWithServiceKey
                     and IReplaceService attributeWithReplaceService))
                 {
@@ -746,7 +746,9 @@ public static class ServiceCollectionExtensions
     private static void MapResolveBySelf(ref IServiceCollection services, Assembly assembly)
     {
         var typesWithResolveFromSelf = assembly.GetTypes()
-            .Where(t => t.GetCustomAttributes(typeof(ResolveBySelfAttribute), false).Length != 0);
+            .Where(t => t.GetCustomAttributes(typeof(ResolveBySelfAttribute), false).Length != 0)
+            .OrderBy(x => x.Name);
+
 
         foreach (var implType in typesWithResolveFromSelf)
         {
@@ -777,7 +779,8 @@ public static class ServiceCollectionExtensions
     private static void MapTryResolveBySelf(ref IServiceCollection services, Assembly assembly)
     {
         var typesWithResolveFromSelf = assembly.GetTypes()
-            .Where(t => t.GetCustomAttributes(typeof(TryResolveBySelfAttribute), false).Length != 0);
+            .Where(t => t.GetCustomAttributes(typeof(TryResolveBySelfAttribute), false).Length != 0)
+            .OrderBy(x => x.Name);
 
         foreach (var implType in typesWithResolveFromSelf)
         {
@@ -786,8 +789,7 @@ public static class ServiceCollectionExtensions
 
             foreach (var attribute in attributes)
             {
-                var lifetime = attribute.Lifetime;
-                switch (lifetime)
+                switch (attribute.Lifetime)
                 {
                     case InstanceLifetime.Singleton:
                         services.TryAddSingleton(implType);

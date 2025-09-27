@@ -1,5 +1,6 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
+using SharpServiceCollection.Enums;
 using SharpServiceCollection.Extensions;
 using SharpServiceCollection.Tests.TestData.ConcreteTypes;
 using SharpServiceCollection.Tests.TestData.Interfaces;
@@ -184,6 +185,48 @@ public class SharpServiceCollectionTests
     }
 
     [Fact]
+    public void Demo_TryResolveBySelf_Scoped()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var assembly = Assembly.GetExecutingAssembly();
+
+        // Act
+        services.AddServicesFromAssembly(assembly);
+        var serviceProvider = services.BuildServiceProvider();
+        var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(Demo));
+
+        // Assert
+        var service = serviceProvider.GetService<Demo>();
+        service.ShouldNotBeNull();
+        service.ShouldBeOfType<Demo>();
+
+        descriptor.ShouldNotBeNull();
+        descriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void Demo_TryResolveBySelf_Transient()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var assembly = Assembly.GetExecutingAssembly();
+
+        // Act
+        services.AddServicesFromAssembly(assembly);
+        var serviceProvider = services.BuildServiceProvider();
+        var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IDemo));
+
+        // Assert
+        var service = serviceProvider.GetKeyedService<IDemo>("key-111");
+        service.ShouldNotBeNull();
+        service.ShouldBeOfType<Demo>();
+
+        descriptor.ShouldNotBeNull();
+        descriptor.Lifetime.ShouldBe(ServiceLifetime.Transient);
+    }
+
+    [Fact]
     public void TransientDependency_ResolveByMatchingInterface()
     {
         // Arrange
@@ -311,7 +354,7 @@ public class SharpServiceCollectionTests
         // Arrange
         var serviceCollection = new ServiceCollection();
         var assembly = Assembly.GetExecutingAssembly();
-
+        
         // Act
         serviceCollection.AddServicesFromAssembly(assembly);
         var serviceProvider = serviceCollection.BuildServiceProvider();
