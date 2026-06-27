@@ -1,4 +1,4 @@
-name: DotNet 8
+name: dotnet-check
 
 on:
   push:
@@ -11,18 +11,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup DotNet 8
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "8.0.x"
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
 
       - name: Restore dependencies
-        run: dotnet restore "SharpServiceCollection.sln"
+        run: dotnet restore "SharpServiceCollection.slnx" --locked-mode
 
       - name: Build
-        run: dotnet build "SharpServiceCollection.sln" --configuration Release --no-restore
+        run: dotnet build "SharpServiceCollection.slnx" --configuration Release --no-restore
 
       - name: Run tests
-        run: dotnet test "SharpServiceCollection.sln" --configuration Release --no-build
+        run: dotnet test "SharpServiceCollection.slnx" --configuration Release --no-build --no-restore --verbosity normal

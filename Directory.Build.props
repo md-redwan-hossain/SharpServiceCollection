@@ -1,0 +1,12 @@
+<Project>
+    <PropertyGroup>
+        <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+        <DisableTransitiveProjectReferences>false</DisableTransitiveProjectReferences>
+        <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+        <DefaultItemExcludes>
+            $(DefaultItemExcludes);out/**;publish/**;bin/**;obj/**
+        </DefaultItemExcludes>
+    </PropertyGroup>
+    
+</Project>

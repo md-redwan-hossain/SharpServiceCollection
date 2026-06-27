@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="SharpServiceCollection.Tests/SharpServiceCollection.Tests.csproj" />
+  <Project Path="src/SharpServiceCollection/SharpServiceCollection.csproj" />
+</Solution>
