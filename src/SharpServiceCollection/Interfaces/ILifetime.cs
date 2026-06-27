@@ -2,7 +2,7 @@
 
 namespace SharpServiceCollection.Interfaces;
 
-public interface IServiceLifetime
+internal interface IServiceLifetime
 {
     InstanceLifetime Lifetime { get; }
 }

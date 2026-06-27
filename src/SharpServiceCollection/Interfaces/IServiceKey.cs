@@ -1,6 +1,6 @@
 ﻿namespace SharpServiceCollection.Interfaces;
 
-public interface IServiceKey
+internal interface IServiceKey
 {
     public string Key { get; }
 }

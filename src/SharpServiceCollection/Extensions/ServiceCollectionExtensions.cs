@@ -13,19 +13,6 @@ namespace SharpServiceCollection.Extensions;
 
 public static class ServiceCollectionExtensions
 {
-    [Obsolete($"Use {nameof(AddServicesFromCurrentAssembly)}() method instead.", true)]
-    public static IServiceCollection AddServicesBySharpServiceCollection(this IServiceCollection services)
-    {
-        return AddServicesFromAssembly(services, Assembly.GetCallingAssembly());
-    }
-
-    [Obsolete($"Use {nameof(AddServicesFromAssembly)}(Assembly assembly) method instead.", true)]
-    public static IServiceCollection AddServicesBySharpServiceCollection(this IServiceCollection services,
-        Assembly assembly)
-    {
-        return AddServicesFromAssembly(services, assembly);
-    }
-
     public static IServiceCollection AddServicesFromAssemblyContaining<T>(this IServiceCollection services)
     {
         return AddServicesFromAssembly(services, typeof(T).Assembly);
@@ -86,32 +73,32 @@ public static class ServiceCollectionExtensions
 
                 if (attribute is not (IServiceLifetime attributeWithLifetime
                     and IServiceKey attributeWithServiceKey
-                    and IReplaceService attributeWithReplaceService))
+                    and ITryAddService attributeWithTryAdd))
                 {
                     continue;
                 }
 
-                // Replace and Non-Keyed
-                if (attributeWithReplaceService.Replace && string.IsNullOrEmpty(attributeWithServiceKey.Key))
+                var isKeyed = !string.IsNullOrEmpty(attributeWithServiceKey.Key);
+
+                if (attributeWithTryAdd.TryAdd && !isKeyed)
                 {
                     switch (attributeWithLifetime.Lifetime)
                     {
                         case InstanceLifetime.Singleton:
-                            services.AddSingleton(resolverType, implType);
+                            services.TryAddSingleton(resolverType, implType);
                             break;
                         case InstanceLifetime.Scoped:
-                            services.AddScoped(resolverType, implType);
+                            services.TryAddScoped(resolverType, implType);
                             break;
                         case InstanceLifetime.Transient:
-                            services.AddTransient(resolverType, implType);
+                            services.TryAddTransient(resolverType, implType);
                             break;
                         default:
                             throw new InvalidEnumArgumentException();
                     }
                 }
 
-                // Non-Replace and Keyed
-                if (!attributeWithReplaceService.Replace && !string.IsNullOrEmpty(attributeWithServiceKey.Key))
+                if (attributeWithTryAdd.TryAdd && isKeyed)
                 {
                     switch (attributeWithLifetime.Lifetime)
                     {
@@ -129,8 +116,7 @@ public static class ServiceCollectionExtensions
                     }
                 }
 
-                // Replace and Keyed
-                if (!attributeWithReplaceService.Replace && !string.IsNullOrEmpty(attributeWithServiceKey.Key))
+                if (!attributeWithTryAdd.TryAdd && isKeyed)
                 {
                     switch (attributeWithLifetime.Lifetime)
                     {
@@ -148,19 +134,18 @@ public static class ServiceCollectionExtensions
                     }
                 }
 
-                // Non-Replace and Non-Keyed
-                if (!attributeWithReplaceService.Replace && string.IsNullOrEmpty(attributeWithServiceKey.Key))
+                if (!attributeWithTryAdd.TryAdd && !isKeyed)
                 {
                     switch (attributeWithLifetime.Lifetime)
                     {
                         case InstanceLifetime.Singleton:
-                            services.TryAddSingleton(resolverType, implType);
+                            services.AddSingleton(resolverType, implType);
                             break;
                         case InstanceLifetime.Scoped:
-                            services.TryAddScoped(resolverType, implType);
+                            services.AddScoped(resolverType, implType);
                             break;
                         case InstanceLifetime.Transient:
-                            services.TryAddTransient(resolverType, implType);
+                            services.AddTransient(resolverType, implType);
                             break;
                         default:
                             throw new InvalidEnumArgumentException();
@@ -188,9 +173,13 @@ public static class ServiceCollectionExtensions
                         continue;
                     }
 
-                    // ImplementedInterfaceAndReplace, Keyed
-                    if (attribute.ResolveBy == ResolveBy.ImplementedInterfaceAndReplace &&
-                        !string.IsNullOrEmpty(attribute.Key))
+                    if (attribute.ResolveBy != ResolveBy.ImplementedInterface)
+                    {
+                        continue;
+                    }
+
+                    // Add, Keyed
+                    if (!attribute.TryAdd && !string.IsNullOrEmpty(attribute.Key))
                     {
                         switch (attribute.Lifetime)
                         {
@@ -208,9 +197,8 @@ public static class ServiceCollectionExtensions
                         }
                     }
 
-                    // ImplementedInterface, Keyed
-                    if (attribute.ResolveBy == ResolveBy.ImplementedInterface &&
-                        !string.IsNullOrEmpty(attribute.Key))
+                    // TryAdd, Keyed
+                    if (attribute.TryAdd && !string.IsNullOrEmpty(attribute.Key))
                     {
                         switch (attribute.Lifetime)
                         {
@@ -228,9 +216,8 @@ public static class ServiceCollectionExtensions
                         }
                     }
 
-                    // ImplementedInterfaceAndReplace, Non-Keyed
-                    if (attribute.ResolveBy == ResolveBy.ImplementedInterfaceAndReplace &&
-                        string.IsNullOrEmpty(attribute.Key))
+                    // Add, Non-Keyed
+                    if (!attribute.TryAdd && string.IsNullOrEmpty(attribute.Key))
                     {
                         switch (attribute.Lifetime)
                         {
@@ -248,9 +235,8 @@ public static class ServiceCollectionExtensions
                         }
                     }
 
-                    // ImplementedInterface, Non-Keyed
-                    if (attribute.ResolveBy == ResolveBy.ImplementedInterface &&
-                        string.IsNullOrEmpty(attribute.Key))
+                    // TryAdd, Non-Keyed
+                    if (attribute.TryAdd && string.IsNullOrEmpty(attribute.Key))
                     {
                         switch (attribute.Lifetime)
                         {
@@ -289,9 +275,13 @@ public static class ServiceCollectionExtensions
                     continue;
                 }
 
-                // MatchingInterfaceAndReplace, Keyed
-                if (attribute.ResolveBy == ResolveBy.MatchingInterfaceAndReplace &&
-                    !string.IsNullOrEmpty(attribute.Key))
+                if (attribute.ResolveBy != ResolveBy.MatchingInterface)
+                {
+                    continue;
+                }
+
+                // Add, Keyed
+                if (!attribute.TryAdd && !string.IsNullOrEmpty(attribute.Key))
                 {
                     switch (attribute.Lifetime)
                     {
@@ -309,9 +299,8 @@ public static class ServiceCollectionExtensions
                     }
                 }
 
-                // MatchingInterface, Keyed
-                if (attribute.ResolveBy == ResolveBy.MatchingInterface &&
-                    !string.IsNullOrEmpty(attribute.Key))
+                // TryAdd, Keyed
+                if (attribute.TryAdd && !string.IsNullOrEmpty(attribute.Key))
                 {
                     switch (attribute.Lifetime)
                     {
@@ -329,9 +318,8 @@ public static class ServiceCollectionExtensions
                     }
                 }
 
-                // MatchingInterfaceAndReplace, Non-Keyed
-                if (attribute.ResolveBy == ResolveBy.MatchingInterfaceAndReplace &&
-                    string.IsNullOrEmpty(attribute.Key))
+                // Add, Non-Keyed
+                if (!attribute.TryAdd && string.IsNullOrEmpty(attribute.Key))
                 {
                     switch (attribute.Lifetime)
                     {
@@ -349,9 +337,8 @@ public static class ServiceCollectionExtensions
                     }
                 }
 
-                // MatchingInterface, Non-Keyed
-                if (attribute.ResolveBy == ResolveBy.MatchingInterface &&
-                    string.IsNullOrEmpty(attribute.Key))
+                // TryAdd, Non-Keyed
+                if (attribute.TryAdd && string.IsNullOrEmpty(attribute.Key))
                 {
                     switch (attribute.Lifetime)
                     {
@@ -382,8 +369,13 @@ public static class ServiceCollectionExtensions
 
             foreach (var attribute in attributes)
             {
-                // SelfAndReplace, Keyed
-                if (attribute.ResolveBy == ResolveBy.SelfAndReplace && !string.IsNullOrEmpty(attribute.Key))
+                if (attribute.ResolveBy != ResolveBy.Self)
+                {
+                    continue;
+                }
+
+                // Add, Keyed
+                if (!attribute.TryAdd && !string.IsNullOrEmpty(attribute.Key))
                 {
                     switch (attribute.Lifetime)
                     {
@@ -401,8 +393,8 @@ public static class ServiceCollectionExtensions
                     }
                 }
 
-                // MatchingInterface, Keyed
-                if (attribute.ResolveBy == ResolveBy.Self && !string.IsNullOrEmpty(attribute.Key))
+                // TryAdd, Keyed
+                if (attribute.TryAdd && !string.IsNullOrEmpty(attribute.Key))
                 {
                     switch (attribute.Lifetime)
                     {
@@ -420,8 +412,8 @@ public static class ServiceCollectionExtensions
                     }
                 }
 
-                // SelfAndReplace, Non-Keyed
-                if (attribute.ResolveBy == ResolveBy.SelfAndReplace && string.IsNullOrEmpty(attribute.Key))
+                // Add, Non-Keyed
+                if (!attribute.TryAdd && string.IsNullOrEmpty(attribute.Key))
                 {
                     switch (attribute.Lifetime)
                     {
@@ -439,8 +431,8 @@ public static class ServiceCollectionExtensions
                     }
                 }
 
-                // MatchingInterface, Non-Keyed
-                if (attribute.ResolveBy == ResolveBy.Self && string.IsNullOrEmpty(attribute.Key))
+                // TryAdd, Non-Keyed
+                if (attribute.TryAdd && string.IsNullOrEmpty(attribute.Key))
                 {
                     switch (attribute.Lifetime)
                     {
