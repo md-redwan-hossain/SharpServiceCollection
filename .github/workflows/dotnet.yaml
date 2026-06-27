@@ -1,10 +1,16 @@
 name: dotnet-check
 
 on:
+  workflow_dispatch:
   push:
     branches: [ "main", "develop" ]
   pull_request:
     branches: [ "main", "develop" ]
+
+concurrency:
+  group: ci-${{ github.base_ref || github.ref_name }}
+  cancel-in-progress: true
+
 
 jobs:
   build:
