@@ -1,0 +1,40 @@
+name: nuget-publish
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: nuget-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup DotNet 8
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "8.0.x"
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+
+      - name: Restore dependencies
+        run: dotnet restore "src/SharpServiceCollection/SharpServiceCollection.csproj" --locked-mode
+
+      - name: Pack
+        run: dotnet pack "src/SharpServiceCollection/SharpServiceCollection.csproj" --configuration Release --no-restore --output ./artifacts
+
+      - name: NuGet login (OIDC)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Push to NuGet.org
+        run: dotnet nuget push "./artifacts/*.nupkg" --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
