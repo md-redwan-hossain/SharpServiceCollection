@@ -4,6 +4,7 @@ using SharpServiceCollection.Extensions;
 using SharpServiceCollection.Tests.TestData.ConcreteTypes;
 using SharpServiceCollection.Tests.TestData.Interfaces;
 using Shouldly;
+using Xunit;
 
 namespace SharpServiceCollection.Tests;
 
@@ -429,4 +430,28 @@ public class SharpServiceCollectionTests
             descriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
         }
     }
+
+    [Fact]
+    public void EnumerablePlugins_TryAddEnumerable_RegistersMultipleImplementations()
+    {
+        // Arrange
+        var serviceCollection = new ServiceCollection();
+        var assembly = Assembly.GetExecutingAssembly();
+
+        // Act
+        serviceCollection.AddServicesFromAssembly(assembly);
+        var serviceProvider = serviceCollection.BuildServiceProvider();
+
+        var plugins = serviceProvider.GetServices<IEnumerablePlugin>().ToList();
+        var descriptors = serviceCollection
+            .Where(d => d.ServiceType == typeof(IEnumerablePlugin))
+            .ToList();
+
+        // Assert
+        plugins.Count.ShouldBe(2);
+        plugins.ShouldContain(p => p is EnumerablePluginA);
+        plugins.ShouldContain(p => p is EnumerablePluginB);
+        descriptors.Count.ShouldBe(2);
+    }
+    
 }

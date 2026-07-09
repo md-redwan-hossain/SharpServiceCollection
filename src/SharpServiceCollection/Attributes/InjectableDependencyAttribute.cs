@@ -12,6 +12,22 @@ public class InjectableDependencyAttribute : Attribute, IServiceLifetime, IServi
     public string Key { get; set; }
     public bool TryAdd { get; set; }
 
+    private bool _enumerable;
+    public bool Enumerable
+    {
+        get => _enumerable;
+        set
+        {
+            if (!TryAdd && value)
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(Enumerable)} can't be true when {nameof(TryAdd)} is false");
+            }
+
+            _enumerable = value;
+        }
+    }
+
     /// <param name="lifetime">
     /// Specifies the lifetime of the instance to be resolved.
     /// </param>
@@ -26,6 +42,7 @@ public class InjectableDependencyAttribute : Attribute, IServiceLifetime, IServi
         ResolveBy = resolveBy;
         Key = string.Empty;
         TryAdd = true;
+        Enumerable = false;
     }
 }
 
@@ -36,6 +53,22 @@ public class InjectableDependencyAttribute<T> : Attribute, IServiceLifetime, ISe
     public bool TryAdd { get; set; }
     public string Key { get; set; }
 
+    private bool _enumerable;
+    public bool Enumerable
+    {
+        get => _enumerable;
+        set
+        {
+            if (!TryAdd && value)
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(Enumerable)} can't be true when {nameof(TryAdd)} is false");
+            }
+
+            _enumerable = value;
+        }
+    }
+
     /// <param name="lifetime">
     /// Specifies the lifetime of the instance to be resolved.
     /// </param>
@@ -44,5 +77,6 @@ public class InjectableDependencyAttribute<T> : Attribute, IServiceLifetime, ISe
         Lifetime = lifetime;
         TryAdd = true;
         Key = string.Empty;
+        Enumerable = false;
     }
 }

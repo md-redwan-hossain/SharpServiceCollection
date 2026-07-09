@@ -1,7 +1,7 @@
 {
   "version": 2,
   "dependencies": {
-    "net8.0": {
+    "net10.0": {
       "coverlet.collector": {
         "type": "Direct",
         "requested": "[10.0.1, )",
@@ -69,10 +69,7 @@
       "Microsoft.ApplicationInsights": {
         "type": "Transitive",
         "resolved": "2.23.0",
-        "contentHash": "nWArUZTdU7iqZLycLKWe0TDms48KKGE6pONH2terYNa8REXiqixrMOkf1sk5DHGMaUTqONU2YkS4SAXBhLStgw==",
-        "dependencies": {
-          "System.Diagnostics.DiagnosticSource": "5.0.0"
-        }
+        "contentHash": "nWArUZTdU7iqZLycLKWe0TDms48KKGE6pONH2terYNa8REXiqixrMOkf1sk5DHGMaUTqONU2YkS4SAXBhLStgw=="
       },
       "Microsoft.Bcl.AsyncInterfaces": {
         "type": "Transitive",
@@ -83,11 +80,6 @@
         "type": "Transitive",
         "resolved": "18.7.0",
         "contentHash": "+wFfx9s7D9wegM0RziXMj2kvYDT4qcqXXtyjiQwSZOGQ2wwcOAJQcD6eQXk02jt0MvRNawtp8TJxTrV+wD8X1g=="
-      },
-      "Microsoft.NETCore.Platforms": {
-        "type": "Transitive",
-        "resolved": "5.0.0",
-        "contentHash": "VyPlqzH2wavqquTcYpkIIAQ6WdenuKoFN0BdYBbCWsclXacSOHNQn66Gt4z5NBqEYW0FAPm5rlvki9ZiCij5xQ=="
       },
       "Microsoft.Testing.Extensions.Telemetry": {
         "type": "Transitive",
@@ -122,10 +114,7 @@
       "Microsoft.TestPlatform.ObjectModel": {
         "type": "Transitive",
         "resolved": "18.7.0",
-        "contentHash": "6rmgU4q3/WOpOPcncI0YW0Q/QpcQtwR2TTEXDR5+4TfSimPBAk6Z/BgKLeGgp1SOun0ROVUCCafXhRLwsHaPpA==",
-        "dependencies": {
-          "System.Reflection.Metadata": "8.0.0"
-        }
+        "contentHash": "6rmgU4q3/WOpOPcncI0YW0Q/QpcQtwR2TTEXDR5+4TfSimPBAk6Z/BgKLeGgp1SOun0ROVUCCafXhRLwsHaPpA=="
       },
       "Microsoft.TestPlatform.TestHost": {
         "type": "Transitive",
@@ -139,11 +128,7 @@
       "Microsoft.Win32.Registry": {
         "type": "Transitive",
         "resolved": "5.0.0",
-        "contentHash": "dDoKi0PnDz31yAyETfRntsLArTlVAVzUzCIvvEDsDsucrl33Dl8pIJG06ePTJTI3tGpeyHS9Cq7Foc/s4EeKcg==",
-        "dependencies": {
-          "System.Security.AccessControl": "5.0.0",
-          "System.Security.Principal.Windows": "5.0.0"
-        }
+        "contentHash": "dDoKi0PnDz31yAyETfRntsLArTlVAVzUzCIvvEDsDsucrl33Dl8pIJG06ePTJTI3tGpeyHS9Cq7Foc/s4EeKcg=="
       },
       "Newtonsoft.Json": {
         "type": "Transitive",
@@ -155,16 +140,6 @@
         "resolved": "6.0.0",
         "contentHash": "CPc6tWO1LAer3IzfZufDBRL+UZQcj5uS207NHALQzP84Vp/z6wF0Aa0YZImOQY8iStY0A2zI/e3ihKNPfUm8XA=="
       },
-      "System.Collections.Immutable": {
-        "type": "Transitive",
-        "resolved": "8.0.0",
-        "contentHash": "AurL6Y5BA1WotzlEvVaIDpqzpIPvYnnldxru8oXJU2yFxFUy3+pNXjXd1ymO+RA0rq0+590Q8gaz2l3Sr7fmqg=="
-      },
-      "System.Diagnostics.DiagnosticSource": {
-        "type": "Transitive",
-        "resolved": "5.0.0",
-        "contentHash": "tCQTzPsGZh/A9LhhA6zrqCRV4hOHsK90/G7q3Khxmn6tnB1PuNU0cRaKANP2AWcF9bn0zsuOoZOSrHuJk6oNBA=="
-      },
       "System.Management": {
         "type": "Transitive",
         "resolved": "6.0.1",
@@ -172,28 +147,6 @@
         "dependencies": {
           "System.CodeDom": "6.0.0"
         }
-      },
-      "System.Reflection.Metadata": {
-        "type": "Transitive",
-        "resolved": "8.0.0",
-        "contentHash": "ptvgrFh7PvWI8bcVqG5rsA/weWM09EnthFHR5SCnS6IN+P4mj6rE1lBDC4U8HL9/57htKAqy4KQ3bBj84cfYyQ==",
-        "dependencies": {
-          "System.Collections.Immutable": "8.0.0"
-        }
-      },
-      "System.Security.AccessControl": {
-        "type": "Transitive",
-        "resolved": "5.0.0",
-        "contentHash": "dagJ1mHZO3Ani8GH0PHpPEe/oYO+rVdbQjvjJkBRNQkX4t0r1iaeGn8+/ybkSLEan3/slM0t59SVdHzuHf2jmw==",
-        "dependencies": {
-          "Microsoft.NETCore.Platforms": "5.0.0",
-          "System.Security.Principal.Windows": "5.0.0"
-        }
-      },
-      "System.Security.Principal.Windows": {
-        "type": "Transitive",
-        "resolved": "5.0.0",
-        "contentHash": "t0MGLukB5WAVU9bO3MGzvlGnyJPgUlcwerXn1kzBRjwLKixT96XV0Uza41W49gVd8zEMFu9vQEFlv0IOrytICA=="
       },
       "xunit.analyzers": {
         "type": "Transitive",

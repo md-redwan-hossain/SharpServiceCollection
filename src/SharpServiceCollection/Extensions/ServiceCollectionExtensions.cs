@@ -80,76 +80,15 @@ public static class ServiceCollectionExtensions
 
                 var isKeyed = !string.IsNullOrEmpty(attributeWithServiceKey.Key);
 
-                if (attributeWithTryAdd.TryAdd && !isKeyed)
+                if (isKeyed)
                 {
-                    switch (attributeWithLifetime.Lifetime)
-                    {
-                        case InstanceLifetime.Singleton:
-                            services.TryAddSingleton(resolverType, implType);
-                            break;
-                        case InstanceLifetime.Scoped:
-                            services.TryAddScoped(resolverType, implType);
-                            break;
-                        case InstanceLifetime.Transient:
-                            services.TryAddTransient(resolverType, implType);
-                            break;
-                        default:
-                            throw new InvalidEnumArgumentException();
-                    }
+                    RegisterKeyed(services, resolverType, implType, attributeWithLifetime.Lifetime,
+                        attributeWithServiceKey.Key, attributeWithTryAdd.TryAdd);
                 }
-
-                if (attributeWithTryAdd.TryAdd && isKeyed)
+                else
                 {
-                    switch (attributeWithLifetime.Lifetime)
-                    {
-                        case InstanceLifetime.Singleton:
-                            services.TryAddKeyedSingleton(resolverType, attributeWithServiceKey.Key, implType);
-                            break;
-                        case InstanceLifetime.Scoped:
-                            services.TryAddKeyedScoped(resolverType, attributeWithServiceKey.Key, implType);
-                            break;
-                        case InstanceLifetime.Transient:
-                            services.TryAddKeyedTransient(resolverType, attributeWithServiceKey.Key, implType);
-                            break;
-                        default:
-                            throw new InvalidEnumArgumentException();
-                    }
-                }
-
-                if (!attributeWithTryAdd.TryAdd && isKeyed)
-                {
-                    switch (attributeWithLifetime.Lifetime)
-                    {
-                        case InstanceLifetime.Singleton:
-                            services.AddKeyedSingleton(resolverType, attributeWithServiceKey.Key, implType);
-                            break;
-                        case InstanceLifetime.Scoped:
-                            services.AddKeyedScoped(resolverType, attributeWithServiceKey.Key, implType);
-                            break;
-                        case InstanceLifetime.Transient:
-                            services.AddKeyedTransient(resolverType, attributeWithServiceKey.Key, implType);
-                            break;
-                        default:
-                            throw new InvalidEnumArgumentException();
-                    }
-                }
-
-                if (!attributeWithTryAdd.TryAdd && !isKeyed)
-                {
-                    switch (attributeWithLifetime.Lifetime)
-                    {
-                        case InstanceLifetime.Singleton:
-                            services.AddSingleton(resolverType, implType);
-                            break;
-                        case InstanceLifetime.Scoped:
-                            services.AddScoped(resolverType, implType);
-                            break;
-                        case InstanceLifetime.Transient:
-                            services.AddTransient(resolverType, implType);
-                            break;
-                        default:
-                            throw new InvalidEnumArgumentException();
-                    }
+                    RegisterNonKeyed(services, resolverType, implType, attributeWithLifetime.Lifetime,
+                        attributeWithTryAdd.TryAdd, attributeWithTryAdd.Enumerable);
                 }
             }
         }
@@ -178,80 +117,15 @@ public static class ServiceCollectionExtensions
                         continue;
                     }
 
-                    // Add, Keyed
-                    if (!attribute.TryAdd && !string.IsNullOrEmpty(attribute.Key))
+                    if (!string.IsNullOrEmpty(attribute.Key))
                     {
-                        switch (attribute.Lifetime)
-                        {
-                            case InstanceLifetime.Singleton:
-                                services.AddKeyedSingleton(interfaceType, attribute.Key, implType);
-                                break;
-                            case InstanceLifetime.Scoped:
-                                services.AddKeyedScoped(interfaceType, attribute.Key, implType);
-                                break;
-                            case InstanceLifetime.Transient:
-                                services.AddKeyedTransient(interfaceType, attribute.Key, implType);
-                                break;
-                            default:
-                                throw new InvalidEnumArgumentException();
-                        }
+                        RegisterKeyed(services, interfaceType, implType, attribute.Lifetime, attribute.Key,
+                            attribute.TryAdd);
                     }
-
-                    // TryAdd, Keyed
-                    if (attribute.TryAdd && !string.IsNullOrEmpty(attribute.Key))
+                    else
                     {
-                        switch (attribute.Lifetime)
-                        {
-                            case InstanceLifetime.Singleton:
-                                services.TryAddKeyedSingleton(interfaceType, attribute.Key, implType);
-                                break;
-                            case InstanceLifetime.Scoped:
-                                services.TryAddKeyedScoped(interfaceType, attribute.Key, implType);
-                                break;
-                            case InstanceLifetime.Transient:
-                                services.TryAddKeyedTransient(interfaceType, attribute.Key, implType);
-                                break;
-                            default:
-                                throw new InvalidEnumArgumentException();
-                        }
-                    }
-
-                    // Add, Non-Keyed
-                    if (!attribute.TryAdd && string.IsNullOrEmpty(attribute.Key))
-                    {
-                        switch (attribute.Lifetime)
-                        {
-                            case InstanceLifetime.Singleton:
-                                services.AddSingleton(interfaceType, implType);
-                                break;
-                            case InstanceLifetime.Scoped:
-                                services.AddScoped(interfaceType, implType);
-                                break;
-                            case InstanceLifetime.Transient:
-                                services.AddTransient(interfaceType, implType);
-                                break;
-                            default:
-                                throw new InvalidEnumArgumentException();
-                        }
-                    }
-
-                    // TryAdd, Non-Keyed
-                    if (attribute.TryAdd && string.IsNullOrEmpty(attribute.Key))
-                    {
-                        switch (attribute.Lifetime)
-                        {
-                            case InstanceLifetime.Singleton:
-                                services.TryAddSingleton(interfaceType, implType);
-                                break;
-                            case InstanceLifetime.Scoped:
-                                services.TryAddScoped(interfaceType, implType);
-                                break;
-                            case InstanceLifetime.Transient:
-                                services.TryAddTransient(interfaceType, implType);
-                                break;
-                            default:
-                                throw new InvalidEnumArgumentException();
-                        }
+                        RegisterNonKeyed(services, interfaceType, implType, attribute.Lifetime, attribute.TryAdd,
+                            attribute.Enumerable);
                     }
                 }
             }
@@ -280,80 +154,15 @@ public static class ServiceCollectionExtensions
                     continue;
                 }
 
-                // Add, Keyed
-                if (!attribute.TryAdd && !string.IsNullOrEmpty(attribute.Key))
+                if (!string.IsNullOrEmpty(attribute.Key))
                 {
-                    switch (attribute.Lifetime)
-                    {
-                        case InstanceLifetime.Singleton:
-                            services.AddKeyedSingleton(interfaceType, attribute.Key, implType);
-                            break;
-                        case InstanceLifetime.Scoped:
-                            services.AddKeyedScoped(interfaceType, attribute.Key, implType);
-                            break;
-                        case InstanceLifetime.Transient:
-                            services.AddKeyedTransient(interfaceType, attribute.Key, implType);
-                            break;
-                        default:
-                            throw new InvalidEnumArgumentException();
-                    }
+                    RegisterKeyed(services, interfaceType, implType, attribute.Lifetime, attribute.Key,
+                        attribute.TryAdd);
                 }
-
-                // TryAdd, Keyed
-                if (attribute.TryAdd && !string.IsNullOrEmpty(attribute.Key))
+                else
                 {
-                    switch (attribute.Lifetime)
-                    {
-                        case InstanceLifetime.Singleton:
-                            services.TryAddKeyedSingleton(interfaceType, attribute.Key, implType);
-                            break;
-                        case InstanceLifetime.Scoped:
-                            services.TryAddKeyedScoped(interfaceType, attribute.Key, implType);
-                            break;
-                        case InstanceLifetime.Transient:
-                            services.TryAddKeyedTransient(interfaceType, attribute.Key, implType);
-                            break;
-                        default:
-                            throw new InvalidEnumArgumentException();
-                    }
-                }
-
-                // Add, Non-Keyed
-                if (!attribute.TryAdd && string.IsNullOrEmpty(attribute.Key))
-                {
-                    switch (attribute.Lifetime)
-                    {
-                        case InstanceLifetime.Singleton:
-                            services.AddSingleton(interfaceType, implType);
-                            break;
-                        case InstanceLifetime.Scoped:
-                            services.AddScoped(interfaceType, implType);
-                            break;
-                        case InstanceLifetime.Transient:
-                            services.AddTransient(interfaceType, implType);
-                            break;
-                        default:
-                            throw new InvalidEnumArgumentException();
-                    }
-                }
-
-                // TryAdd, Non-Keyed
-                if (attribute.TryAdd && string.IsNullOrEmpty(attribute.Key))
-                {
-                    switch (attribute.Lifetime)
-                    {
-                        case InstanceLifetime.Singleton:
-                            services.TryAddSingleton(interfaceType, implType);
-                            break;
-                        case InstanceLifetime.Scoped:
-                            services.TryAddScoped(interfaceType, implType);
-                            break;
-                        case InstanceLifetime.Transient:
-                            services.TryAddTransient(interfaceType, implType);
-                            break;
-                        default:
-                            throw new InvalidEnumArgumentException();
-                    }
+                    RegisterNonKeyed(services, interfaceType, implType, attribute.Lifetime, attribute.TryAdd,
+                        attribute.Enumerable);
                 }
             }
         }
@@ -374,80 +183,14 @@ public static class ServiceCollectionExtensions
                     continue;
                 }
 
-                // Add, Keyed
-                if (!attribute.TryAdd && !string.IsNullOrEmpty(attribute.Key))
+                if (!string.IsNullOrEmpty(attribute.Key))
                 {
-                    switch (attribute.Lifetime)
-                    {
-                        case InstanceLifetime.Singleton:
-                            services.AddKeyedSingleton(attribute.Key, implType);
-                            break;
-                        case InstanceLifetime.Scoped:
-                            services.AddKeyedScoped(implType, attribute.Key);
-                            break;
-                        case InstanceLifetime.Transient:
-                            services.AddKeyedTransient(implType, attribute.Key);
-                            break;
-                        default:
-                            throw new InvalidEnumArgumentException();
-                    }
+                    RegisterKeyedSelf(services, implType, attribute.Lifetime, attribute.Key, attribute.TryAdd);
                 }
-
-                // TryAdd, Keyed
-                if (attribute.TryAdd && !string.IsNullOrEmpty(attribute.Key))
+                else
                 {
-                    switch (attribute.Lifetime)
-                    {
-                        case InstanceLifetime.Singleton:
-                            services.TryAddKeyedSingleton(attribute.Key, implType);
-                            break;
-                        case InstanceLifetime.Scoped:
-                            services.TryAddKeyedScoped(implType, attribute.Key);
-                            break;
-                        case InstanceLifetime.Transient:
-                            services.TryAddKeyedTransient(implType, attribute.Key);
-                            break;
-                        default:
-                            throw new InvalidEnumArgumentException();
-                    }
-                }
-
-                // Add, Non-Keyed
-                if (!attribute.TryAdd && string.IsNullOrEmpty(attribute.Key))
-                {
-                    switch (attribute.Lifetime)
-                    {
-                        case InstanceLifetime.Singleton:
-                            services.AddSingleton(implType);
-                            break;
-                        case InstanceLifetime.Scoped:
-                            services.AddScoped(implType);
-                            break;
-                        case InstanceLifetime.Transient:
-                            services.AddTransient(implType);
-                            break;
-                        default:
-                            throw new InvalidEnumArgumentException();
-                    }
-                }
-
-                // TryAdd, Non-Keyed
-                if (attribute.TryAdd && string.IsNullOrEmpty(attribute.Key))
-                {
-                    switch (attribute.Lifetime)
-                    {
-                        case InstanceLifetime.Singleton:
-                            services.TryAddSingleton(implType);
-                            break;
-                        case InstanceLifetime.Scoped:
-                            services.TryAddScoped(implType);
-                            break;
-                        case InstanceLifetime.Transient:
-                            services.TryAddTransient(implType);
-                            break;
-                        default:
-                            throw new InvalidEnumArgumentException();
-                    }
+                    RegisterNonKeyed(services, implType, implType, attribute.Lifetime, attribute.TryAdd,
+                        attribute.Enumerable);
                 }
             }
         }
@@ -796,6 +539,155 @@ public static class ServiceCollectionExtensions
                         throw new InvalidEnumArgumentException();
                 }
             }
+        }
+    }
+
+    private static ServiceLifetime ToServiceLifetime(InstanceLifetime lifetime)
+    {
+        return lifetime switch
+        {
+            InstanceLifetime.Singleton => ServiceLifetime.Singleton,
+            InstanceLifetime.Scoped => ServiceLifetime.Scoped,
+            InstanceLifetime.Transient => ServiceLifetime.Transient,
+            _ => throw new InvalidEnumArgumentException(nameof(lifetime), (int)lifetime, typeof(InstanceLifetime))
+        };
+    }
+
+    private static void RegisterNonKeyed(
+        IServiceCollection services,
+        Type serviceType,
+        Type implementationType,
+        InstanceLifetime lifetime,
+        bool tryAdd,
+        bool enumerable)
+    {
+        if (tryAdd && enumerable)
+        {
+            services.TryAddEnumerable(ServiceDescriptor.Describe(serviceType, implementationType,
+                ToServiceLifetime(lifetime)));
+            return;
+        }
+
+        if (tryAdd)
+        {
+            switch (lifetime)
+            {
+                case InstanceLifetime.Singleton:
+                    services.TryAddSingleton(serviceType, implementationType);
+                    break;
+                case InstanceLifetime.Scoped:
+                    services.TryAddScoped(serviceType, implementationType);
+                    break;
+                case InstanceLifetime.Transient:
+                    services.TryAddTransient(serviceType, implementationType);
+                    break;
+                default:
+                    throw new InvalidEnumArgumentException();
+            }
+
+            return;
+        }
+
+        switch (lifetime)
+        {
+            case InstanceLifetime.Singleton:
+                services.AddSingleton(serviceType, implementationType);
+                break;
+            case InstanceLifetime.Scoped:
+                services.AddScoped(serviceType, implementationType);
+                break;
+            case InstanceLifetime.Transient:
+                services.AddTransient(serviceType, implementationType);
+                break;
+            default:
+                throw new InvalidEnumArgumentException();
+        }
+    }
+
+    private static void RegisterKeyed(
+        IServiceCollection services,
+        Type serviceType,
+        Type implementationType,
+        InstanceLifetime lifetime,
+        string key,
+        bool tryAdd)
+    {
+        if (tryAdd)
+        {
+            switch (lifetime)
+            {
+                case InstanceLifetime.Singleton:
+                    services.TryAddKeyedSingleton(serviceType, key, implementationType);
+                    break;
+                case InstanceLifetime.Scoped:
+                    services.TryAddKeyedScoped(serviceType, key, implementationType);
+                    break;
+                case InstanceLifetime.Transient:
+                    services.TryAddKeyedTransient(serviceType, key, implementationType);
+                    break;
+                default:
+                    throw new InvalidEnumArgumentException();
+            }
+
+            return;
+        }
+
+        switch (lifetime)
+        {
+            case InstanceLifetime.Singleton:
+                services.AddKeyedSingleton(serviceType, key, implementationType);
+                break;
+            case InstanceLifetime.Scoped:
+                services.AddKeyedScoped(serviceType, key, implementationType);
+                break;
+            case InstanceLifetime.Transient:
+                services.AddKeyedTransient(serviceType, key, implementationType);
+                break;
+            default:
+                throw new InvalidEnumArgumentException();
+        }
+    }
+
+    private static void RegisterKeyedSelf(
+        IServiceCollection services,
+        Type implementationType,
+        InstanceLifetime lifetime,
+        string key,
+        bool tryAdd)
+    {
+        if (tryAdd)
+        {
+            switch (lifetime)
+            {
+                case InstanceLifetime.Singleton:
+                    services.TryAddKeyedSingleton(key, implementationType);
+                    break;
+                case InstanceLifetime.Scoped:
+                    services.TryAddKeyedScoped(implementationType, key);
+                    break;
+                case InstanceLifetime.Transient:
+                    services.TryAddKeyedTransient(implementationType, key);
+                    break;
+                default:
+                    throw new InvalidEnumArgumentException();
+            }
+
+            return;
+        }
+
+        switch (lifetime)
+        {
+            case InstanceLifetime.Singleton:
+                services.AddKeyedSingleton(key, implementationType);
+                break;
+            case InstanceLifetime.Scoped:
+                services.AddKeyedScoped(implementationType, key);
+                break;
+            case InstanceLifetime.Transient:
+                services.AddKeyedTransient(implementationType, key);
+                break;
+            default:
+                throw new InvalidEnumArgumentException();
         }
     }
 
