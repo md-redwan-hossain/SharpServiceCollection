@@ -1,5 +1,7 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
+using SharpServiceCollection.Attributes;
+using SharpServiceCollection.Enums;
 using SharpServiceCollection.Extensions;
 using SharpServiceCollection.Tests.TestData.ConcreteTypes;
 using SharpServiceCollection.Tests.TestData.Interfaces;
@@ -354,7 +356,7 @@ public class SharpServiceCollectionTests
         // Arrange
         var serviceCollection = new ServiceCollection();
         var assembly = Assembly.GetExecutingAssembly();
-        
+
         // Act
         serviceCollection.AddServicesFromAssembly(assembly);
         var serviceProvider = serviceCollection.BuildServiceProvider();
@@ -453,5 +455,39 @@ public class SharpServiceCollectionTests
         plugins.ShouldContain(p => p is EnumerablePluginB);
         descriptors.Count.ShouldBe(2);
     }
-    
+
+    [Fact]
+    public void InjectableDependencyAttribute_EnumerableTrue_WhenTryAddFalse_Throws()
+    {
+        var attribute = new InjectableDependencyAttribute(InstanceLifetime.Scoped, ResolveBy.Self)
+        {
+            TryAdd = false
+        };
+
+        Should.Throw<InvalidOperationException>(() => attribute.Enumerable = true);
+    }
+
+    [Fact]
+    public void InjectableDependencyAttributeGeneric_EnumerableTrue_WhenTryAddFalse_Throws()
+    {
+        var attribute = new InjectableDependencyAttribute<IEnumerablePlugin>(InstanceLifetime.Scoped)
+        {
+            TryAdd = false
+        };
+
+        Should.Throw<InvalidOperationException>(() => attribute.Enumerable = true);
+    }
+
+    [Fact]
+    public void InjectableDependencyAttribute_EnumerableFalse_WhenTryAddFalse_DoesNotThrow()
+    {
+        var attribute = new InjectableDependencyAttribute(InstanceLifetime.Scoped, ResolveBy.Self)
+        {
+            TryAdd = false,
+            Enumerable = false
+        };
+
+        attribute.Enumerable.ShouldBeFalse();
+        attribute.TryAdd.ShouldBeFalse();
+    }
 }
