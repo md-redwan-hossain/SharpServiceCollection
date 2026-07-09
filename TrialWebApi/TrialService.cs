@@ -3,7 +3,7 @@ using SharpServiceCollection.Enums;
 
 namespace TrialWebApi;
 
-[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.ImplementedInterface, TryAdd = true)]
+[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.ImplementedInterface)]
 public class TrialService : ITrialService
 {
 }

@@ -1,4 +1,4 @@
-namespace SharpServiceCollection.SourceGenerator.Model;
+namespace SharpServiceCollection.SourceGenerator.InternalTypes;
 
 internal static class GeneratorConstants
 {

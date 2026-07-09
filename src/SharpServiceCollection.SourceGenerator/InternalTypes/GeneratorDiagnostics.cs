@@ -1,10 +1,10 @@
 using Microsoft.CodeAnalysis;
 
-namespace SharpServiceCollection.SourceGenerator.Model;
+namespace SharpServiceCollection.SourceGenerator.InternalTypes;
 
 internal static class GeneratorDiagnostics
 {
-    private const string EnumerableRequiresTryAddTitle = "Enumerable registration requires TryAdd";
+    private const string EnumerableRequiresTryAddTitle = "Enumerable=true requires TryAdd=true";
     private const string MatchingInterfaceMissingTitle = "Matching interface not found";
     private const string InvalidLifetimeTitle = "Unsupported lifetime value";
     private const string InvalidResolveByTitle = "Unsupported resolve-by value";
@@ -12,7 +12,7 @@ internal static class GeneratorDiagnostics
     internal static readonly DiagnosticDescriptor EnumerableRequiresTryAdd = new(
         id: "SSC001",
         title: EnumerableRequiresTryAddTitle,
-        messageFormat: $"{EnumerableRequiresTryAddTitle}=true for '{{0}}'",
+        messageFormat: $"{EnumerableRequiresTryAddTitle} for '{{0}}'",
         category: GeneratorConstants.DiagnosticCategory,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -22,7 +22,7 @@ internal static class GeneratorDiagnostics
         title: MatchingInterfaceMissingTitle,
         messageFormat: "ResolveBy.MatchingInterface requires interface '{0}' on '{1}'",
         category: GeneratorConstants.DiagnosticCategory,
-        defaultSeverity: DiagnosticSeverity.Info,
+        defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
     internal static readonly DiagnosticDescriptor InvalidLifetime = new(

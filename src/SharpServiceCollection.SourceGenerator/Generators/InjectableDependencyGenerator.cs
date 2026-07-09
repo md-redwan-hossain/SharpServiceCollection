@@ -6,9 +6,9 @@ using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
-using SharpServiceCollection.SourceGenerator.Model;
-using static SharpServiceCollection.SourceGenerator.Model.GeneratorConstants;
-using static SharpServiceCollection.SourceGenerator.Model.GeneratorConstants.DependencyInjection;
+using SharpServiceCollection.SourceGenerator.InternalTypes;
+using static SharpServiceCollection.SourceGenerator.InternalTypes.GeneratorConstants;
+using static SharpServiceCollection.SourceGenerator.InternalTypes.GeneratorConstants.DependencyInjection;
 
 namespace SharpServiceCollection.SourceGenerator.Generators;
 
@@ -60,7 +60,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
                 continue;
             }
 
-            CollectRegistrations(type, registrations);
+            CollectRegistrations(type, registrations, diagnostics);
         }
 
         var expanded = ExpandRegistrations(registrations, diagnostics);
@@ -78,8 +78,10 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
         context.AddSource(GeneratedFileName, SourceText.From(generatedSource, Encoding.UTF8));
     }
 
-    private static void CollectRegistrations(INamedTypeSymbol typeSymbol,
-        ICollection<RegistrationModel> registrations)
+    private static void CollectRegistrations(
+        INamedTypeSymbol typeSymbol,
+        ICollection<RegistrationModel> registrations,
+        ICollection<Diagnostic> diagnostics)
     {
         foreach (var attribute in typeSymbol.GetAttributes())
         {
@@ -91,7 +93,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
 
             if (IsNonGenericInjectableDependencyAttribute(attributeClass))
             {
-                var registration = CreateNonGenericRegistration(typeSymbol, attribute);
+                var registration = CreateNonGenericRegistration(typeSymbol, attribute, diagnostics);
                 if (registration is not null)
                 {
                     registrations.Add(registration);
@@ -99,7 +101,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
             }
             else if (IsGenericInjectableDependencyAttribute(attributeClass))
             {
-                var registration = CreateGenericRegistration(typeSymbol, attribute);
+                var registration = CreateGenericRegistration(typeSymbol, attribute, diagnostics);
                 if (registration is not null)
                 {
                     registrations.Add(registration);
@@ -122,7 +124,8 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
 
     private static RegistrationModel? CreateNonGenericRegistration(
         INamedTypeSymbol implementationType,
-        AttributeData attribute)
+        AttributeData attribute,
+        ICollection<Diagnostic> diagnostics)
     {
         if (attribute.ConstructorArguments.Length != 2)
         {
@@ -131,6 +134,11 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
 
         if (!TryParseLifetime(attribute.ConstructorArguments[0], out var lifetime))
         {
+            diagnostics.Add(Diagnostic.Create(
+                GeneratorDiagnostics.InvalidLifetime,
+                attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation(),
+                attribute.ConstructorArguments[0].Value?.ToString() ?? "null",
+                implementationType.ToDisplayString()));
             return null;
         }
 
@@ -144,21 +152,24 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
         var key = GetNamedString(attribute, AttributeProperties.Key);
         var order = GetNamedUInt(attribute, AttributeProperties.Order, defaultValue: 0);
 
-        return new RegistrationModel(
-            implementationType,
-            null,
-            resolveBy,
-            lifetime,
-            tryAdd,
-            enumerable,
-            key,
-            order,
-            attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation());
+        return new RegistrationModel
+        {
+            ImplementationType = implementationType,
+            ExplicitServiceType = null,
+            ResolveBy = resolveBy,
+            Lifetime = lifetime,
+            TryAdd = tryAdd,
+            Enumerable = enumerable,
+            Key = key,
+            Order = order,
+            Location = attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation()
+        };
     }
 
     private static RegistrationModel? CreateGenericRegistration(
         INamedTypeSymbol implementationType,
-        AttributeData attribute)
+        AttributeData attribute,
+        ICollection<Diagnostic> diagnostics)
     {
         if (attribute.ConstructorArguments.Length != 1)
         {
@@ -167,6 +178,11 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
 
         if (!TryParseLifetime(attribute.ConstructorArguments[0], out var lifetime))
         {
+            diagnostics.Add(Diagnostic.Create(
+                GeneratorDiagnostics.InvalidLifetime,
+                attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation(),
+                attribute.ConstructorArguments[0].Value?.ToString() ?? "null",
+                implementationType.ToDisplayString()));
             return null;
         }
 
@@ -182,16 +198,18 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
         var key = GetNamedString(attribute, AttributeProperties.Key);
         var order = GetNamedUInt(attribute, AttributeProperties.Order, defaultValue: 0);
 
-        return new RegistrationModel(
-            implementationType,
-            explicitServiceType,
-            RegistrationResolveBy.ExplicitService,
-            lifetime,
-            tryAdd,
-            enumerable,
-            key,
-            order,
-            attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation());
+        return new RegistrationModel
+        {
+            ImplementationType = implementationType,
+            ExplicitServiceType = explicitServiceType,
+            ResolveBy = RegistrationResolveBy.ExplicitService,
+            Lifetime = lifetime,
+            TryAdd = tryAdd,
+            Enumerable = enumerable,
+            Key = key,
+            Order = order,
+            Location = attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation()
+        };
     }
 
     private static bool TryParseLifetime(TypedConstant value, out RegistrationLifetime lifetime)
@@ -350,15 +368,17 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
         INamedTypeSymbol implementationType,
         RegistrationModel registration)
     {
-        return new ServiceRegistrationDescriptor(
-            serviceType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-            implementationType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-            registration.Lifetime,
-            registration.TryAdd,
-            registration.Enumerable,
-            registration.Key,
-            registration.Order,
-            implementationType.Name);
+        return new ServiceRegistrationDescriptor
+        {
+            ServiceTypeName = serviceType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+            ImplementationTypeName = implementationType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+            Lifetime = registration.Lifetime,
+            TryAdd = registration.TryAdd,
+            Enumerable = registration.Enumerable,
+            Key = registration.Key,
+            Order = registration.Order,
+            ImplementationNameSortKey = implementationType.Name
+        };
     }
 
     private static string BuildSource(IReadOnlyCollection<ServiceRegistrationDescriptor> registrations)

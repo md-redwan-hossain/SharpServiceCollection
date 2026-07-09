@@ -9,7 +9,6 @@ public static class GeneratedServiceCollectionExtensions
     public static global::Microsoft.Extensions.DependencyInjection.IServiceCollection AddGeneratedServices(
         this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
     {
-        services.TryAddScoped(typeof(global::TrialWebApi.ITrialService), typeof(global::TrialWebApi.TrialService));
         return services;
     }
 }

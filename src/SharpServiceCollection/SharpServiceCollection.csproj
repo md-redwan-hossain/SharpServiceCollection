@@ -4,6 +4,11 @@
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     </ItemGroup>
 
+    <ItemGroup>
+        <ProjectReference Include="..\SharpServiceCollection.SourceGenerator\SharpServiceCollection.SourceGenerator.csproj"
+                          ReferenceOutputAssembly="false" />
+    </ItemGroup>
+
     <PropertyGroup>
         <TargetFramework>net8.0</TargetFramework>
         <Nullable>enable</Nullable>
@@ -37,6 +42,10 @@
             <Link>README.md</Link>
             <PackagePath>.</PackagePath>
         </None>
+        <None Include="..\SharpServiceCollection.SourceGenerator\bin\$(Configuration)\netstandard2.0\SharpServiceCollection.SourceGenerator.dll"
+              Pack="true"
+              Visible="false"
+              PackagePath="analyzers/dotnet/cs" />
     </ItemGroup>
 
 
