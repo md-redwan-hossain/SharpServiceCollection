@@ -4,8 +4,5 @@ using SharpServiceCollection.Tests.TestData.Interfaces;
 
 namespace SharpServiceCollection.Tests.TestData.ConcreteTypes;
 
-[InjectableDependency<ITryResolver>(InstanceLifetime.Scoped)]
-[InjectableDependency<IResolver>(InstanceLifetime.Scoped, TryAdd = false)]
-public class Bar : ITryResolver, IResolver
-{
-}
+[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.ImplementedInterface, Enumerable = true)]
+public class EnumerablePluginSecondary : IEnumerablePlugin;

@@ -6,6 +6,4 @@ namespace SharpServiceCollection.Tests.TestData.ConcreteTypes;
 
 [InjectableDependency<ITryResolver>(InstanceLifetime.Scoped)]
 [InjectableDependency<IResolver>(InstanceLifetime.Scoped, TryAdd = false)]
-public class Baz : ITryResolver, IResolver
-{
-}
+public class LastRegisteredResolver : ITryResolver, IResolver;

@@ -1,5 +1,3 @@
 namespace SharpServiceCollection.Tests.TestData.Interfaces;
 
-public interface IEnumerablePlugin
-{
-}
+public interface IEnumerablePlugin;

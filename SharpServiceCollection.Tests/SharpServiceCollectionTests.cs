@@ -187,7 +187,7 @@ public class SharpServiceCollectionTests
     }
 
     [Fact]
-    public void Demo_TryResolveBySelf_Scoped()
+    public void SelfResolvableDependency_TryResolveBySelf_Scoped()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -196,19 +196,19 @@ public class SharpServiceCollectionTests
         // Act
         services.AddServicesFromAssembly(assembly);
         var serviceProvider = services.BuildServiceProvider();
-        var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(Demo));
+        var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(SelfResolvableDependency));
 
         // Assert
-        var service = serviceProvider.GetService<Demo>();
+        var service = serviceProvider.GetService<SelfResolvableDependency>();
         service.ShouldNotBeNull();
-        service.ShouldBeOfType<Demo>();
+        service.ShouldBeOfType<SelfResolvableDependency>();
 
         descriptor.ShouldNotBeNull();
         descriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
     }
 
     [Fact]
-    public void Demo_TryResolveBySelf_Transient()
+    public void SelfResolvableDependency_TryResolveBySelf_Transient()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -217,12 +217,12 @@ public class SharpServiceCollectionTests
         // Act
         services.AddServicesFromAssembly(assembly);
         var serviceProvider = services.BuildServiceProvider();
-        var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IDemo));
+        var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IKeyedTransientDependency));
 
         // Assert
-        var service = serviceProvider.GetKeyedService<IDemo>("key-111");
+        var service = serviceProvider.GetKeyedService<IKeyedTransientDependency>("key-111");
         service.ShouldNotBeNull();
-        service.ShouldBeOfType<Demo>();
+        service.ShouldBeOfType<SelfResolvableDependency>();
 
         descriptor.ShouldNotBeNull();
         descriptor.Lifetime.ShouldBe(ServiceLifetime.Transient);
@@ -271,7 +271,7 @@ public class SharpServiceCollectionTests
     }
 
     [Fact]
-    public void ScopedDemoType_ResolveBy_IScopedDemoService()
+    public void KeyedScopedDependency_ResolveBy_IScopedKeyedDependency()
     {
         // Arrange
         var serviceCollection = new ServiceCollection();
@@ -280,19 +280,19 @@ public class SharpServiceCollectionTests
         // Act
         serviceCollection.AddServicesFromAssembly(assembly);
         var serviceProvider = serviceCollection.BuildServiceProvider();
-        var descriptor = serviceCollection.FirstOrDefault(d => d.ServiceType == typeof(IScopedDemoService));
+        var descriptor = serviceCollection.FirstOrDefault(d => d.ServiceType == typeof(IScopedKeyedDependency));
 
         // Assert
-        var service = serviceProvider.GetService<IScopedDemoService>();
+        var service = serviceProvider.GetService<IScopedKeyedDependency>();
         service.ShouldNotBeNull();
-        service.ShouldBeOfType<ScopedDemoType>();
+        service.ShouldBeOfType<KeyedScopedDependency>();
 
         descriptor.ShouldNotBeNull();
         descriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
     }
 
     [Fact]
-    public void ScopedDemoType_KeyedResolveBy_IKeyedScopedDemoService()
+    public void KeyedScopedDependency_KeyedResolveBy_IKeyedScopedDependency()
     {
         // Arrange
         var serviceCollection = new ServiceCollection();
@@ -301,19 +301,19 @@ public class SharpServiceCollectionTests
         // Act
         serviceCollection.AddServicesFromAssembly(assembly);
         var serviceProvider = serviceCollection.BuildServiceProvider();
-        var descriptor = serviceCollection.FirstOrDefault(d => d.ServiceType == typeof(IKeyedScopedDemoService));
+        var descriptor = serviceCollection.FirstOrDefault(d => d.ServiceType == typeof(IKeyedScopedDependency));
 
         // Assert
-        var service = serviceProvider.GetKeyedService<IKeyedScopedDemoService>("keyed");
+        var service = serviceProvider.GetKeyedService<IKeyedScopedDependency>("keyed");
         service.ShouldNotBeNull();
-        service.ShouldBeOfType<ScopedDemoType>();
+        service.ShouldBeOfType<KeyedScopedDependency>();
 
         descriptor.ShouldNotBeNull();
         descriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
     }
 
     [Fact]
-    public void ScopedDemoType_KeyedResolveBy_IKeyedScopedDemoService_ShouldBeNull()
+    public void KeyedScopedDependency_KeyedResolveBy_IKeyedScopedDependency_ShouldBeNull()
     {
         // Arrange
         var serviceCollection = new ServiceCollection();
@@ -324,12 +324,12 @@ public class SharpServiceCollectionTests
         var serviceProvider = serviceCollection.BuildServiceProvider();
 
         // Assert
-        var service = serviceProvider.GetKeyedService<IKeyedScopedDemoService>("wrong_key");
+        var service = serviceProvider.GetKeyedService<IKeyedScopedDependency>("wrong_key");
         service.ShouldBeNull();
     }
 
     [Fact]
-    public void Baz_TryResolveBy_ITryResolver()
+    public void FirstRegisteredResolver_TryResolveBy_ITryResolver()
     {
         // Arrange
         var serviceCollection = new ServiceCollection();
@@ -343,7 +343,7 @@ public class SharpServiceCollectionTests
         // Assert
         var service = serviceProvider.GetService<ITryResolver>();
         service.ShouldNotBeNull();
-        service.ShouldBeOfType<Bar>();
+        service.ShouldBeOfType<FirstRegisteredResolver>();
 
         descriptor.ShouldNotBeNull();
         descriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
@@ -351,7 +351,7 @@ public class SharpServiceCollectionTests
 
 
     [Fact]
-    public void Foo_TryResolveBy_IResolver()
+    public void LastRegisteredResolver_TryResolveBy_IResolver()
     {
         // Arrange
         var serviceCollection = new ServiceCollection();
@@ -365,19 +365,24 @@ public class SharpServiceCollectionTests
         // Assert
         var service = serviceProvider.GetService<IResolver>();
         service.ShouldNotBeNull();
-        service.ShouldBeOfType<Foo>();
+        service.ShouldBeOfType<LastRegisteredResolver>();
 
         descriptor.ShouldNotBeNull();
         descriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
     }
 
     [Fact]
-    public void FooBarBaz_ResolveByImplementedInterface_IFoo_IBar_IBaz()
+    public void ImplementedInterfaceNonTryService_ResolveByImplementedInterface_Markers()
     {
         // Arrange
         var serviceCollection = new ServiceCollection();
         var assembly = Assembly.GetExecutingAssembly();
-        List<Type> types = [typeof(IFoo), typeof(IBar), typeof(IBaz)];
+        List<Type> types =
+        [
+            typeof(IResolvableMarkerAlpha),
+            typeof(IResolvableMarkerBeta),
+            typeof(IResolvableMarkerGamma)
+        ];
 
         // Act
         serviceCollection.AddServicesFromAssembly(assembly);
@@ -390,7 +395,7 @@ public class SharpServiceCollectionTests
 
             // Assert
             service.ShouldNotBeNull();
-            service.ShouldBeOfType<FooBarBaz>();
+            service.ShouldBeOfType<ImplementedInterfaceNonTryService>();
 
             descriptor.ShouldNotBeNull();
             descriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
@@ -398,12 +403,18 @@ public class SharpServiceCollectionTests
     }
 
     [Fact]
-    public void FooBarBaz_TryResolveByImplementedInterface_IFoo_IBar_IBaz()
+    public void ImplementedInterfaceTryService_TryResolveByImplementedInterface_Markers()
     {
         // Arrange
         var serviceCollection = new ServiceCollection();
         var assembly = Assembly.GetExecutingAssembly();
-        List<Type> types = [typeof(IFoo), typeof(IBar), typeof(IBaz), typeof(IXyz)];
+        List<Type> types =
+        [
+            typeof(IResolvableMarkerAlpha),
+            typeof(IResolvableMarkerBeta),
+            typeof(IResolvableMarkerGamma),
+            typeof(IResolvableMarkerDelta)
+        ];
 
         // Act
         serviceCollection.AddServicesFromAssembly(assembly);
@@ -417,15 +428,15 @@ public class SharpServiceCollectionTests
             // Assert
             service.ShouldNotBeNull();
 
-            if (type == typeof(IXyz))
+            if (type == typeof(IResolvableMarkerDelta))
             {
-                service.ShouldBeOfType<FooBarBazWithTry>();
-                service.ShouldNotBeOfType<FooBarBaz>();
+                service.ShouldBeOfType<ImplementedInterfaceTryService>();
+                service.ShouldNotBeOfType<ImplementedInterfaceNonTryService>();
             }
             else
             {
-                service.ShouldNotBeOfType<FooBarBazWithTry>();
-                service.ShouldBeOfType<FooBarBaz>();
+                service.ShouldNotBeOfType<ImplementedInterfaceTryService>();
+                service.ShouldBeOfType<ImplementedInterfaceNonTryService>();
             }
 
             descriptor.ShouldNotBeNull();
@@ -451,8 +462,8 @@ public class SharpServiceCollectionTests
 
         // Assert
         plugins.Count.ShouldBe(2);
-        plugins.ShouldContain(p => p is EnumerablePluginA);
-        plugins.ShouldContain(p => p is EnumerablePluginB);
+        plugins.ShouldContain(p => p is EnumerablePluginPrimary);
+        plugins.ShouldContain(p => p is EnumerablePluginSecondary);
         descriptors.Count.ShouldBe(2);
     }
 

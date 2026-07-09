@@ -1,6 +1,3 @@
 namespace SharpServiceCollection.Tests.TestData.Interfaces;
 
-public interface IScopedDemoService
-{
-    
-}
+public interface IResolvableMarkerAlpha;

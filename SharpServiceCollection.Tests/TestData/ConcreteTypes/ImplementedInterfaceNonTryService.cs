@@ -6,6 +6,4 @@ namespace SharpServiceCollection.Tests.TestData.ConcreteTypes;
 
 [InjectableDependency(InstanceLifetime.Scoped, ResolveBy.ImplementedInterface, TryAdd = false)]
 [InjectableDependency(InstanceLifetime.Scoped, ResolveBy.ImplementedInterface)]
-public class FooBarBaz : IFoo, IBar, IBaz
-{
-}
+public class ImplementedInterfaceNonTryService : IResolvableMarkerAlpha, IResolvableMarkerBeta, IResolvableMarkerGamma;

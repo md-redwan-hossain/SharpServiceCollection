@@ -1,3 +1,3 @@
 namespace SharpServiceCollection.Tests.TestData.Interfaces;
 
-public interface IResolver;
+public interface IResolvableMarkerGamma;
