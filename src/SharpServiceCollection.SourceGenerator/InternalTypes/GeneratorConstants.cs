@@ -2,6 +2,7 @@ namespace SharpServiceCollection.SourceGenerator.InternalTypes;
 
 internal static class GeneratorConstants
 {
+    internal const string RuntimeAssemblyName = "SharpServiceCollection";
     internal const string GeneratedFileName = "SharpServiceCollection.Generated.g.cs";
     internal const string DiagnosticCategory = "SharpServiceCollection.SourceGenerator";
     internal const string InterfaceNamePrefix = "I";

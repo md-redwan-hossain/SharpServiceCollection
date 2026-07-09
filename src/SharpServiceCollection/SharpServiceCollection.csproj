@@ -1,12 +1,20 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\SharpServiceCollection.SourceGenerator\SharpServiceCollection.SourceGenerator.csproj"
-                          ReferenceOutputAssembly="false" />
+                          PrivateAssets="all"
+                          ReferenceOutputAssembly="false"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Remove="Generated/**/*.cs"/>
+        <None Include="buildTransitive\SharpServiceCollection.targets"
+              Pack="true"
+              PackagePath="buildTransitive"/>
     </ItemGroup>
 
     <PropertyGroup>
@@ -45,7 +53,7 @@
         <None Include="..\SharpServiceCollection.SourceGenerator\bin\$(Configuration)\netstandard2.0\SharpServiceCollection.SourceGenerator.dll"
               Pack="true"
               Visible="false"
-              PackagePath="analyzers/dotnet/cs" />
+              PackagePath="analyzers/dotnet/cs"/>
     </ItemGroup>
 
 

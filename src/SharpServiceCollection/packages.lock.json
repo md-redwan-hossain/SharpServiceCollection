@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "dependencies": {
     "net8.0": {
       "Microsoft.Extensions.DependencyInjection.Abstractions": {
@@ -7,6 +7,9 @@
         "requested": "[10.0.9, )",
         "resolved": "10.0.9",
         "contentHash": "g41l/30G3K4B/d/L8kjux0+30e27c8D0FVQ/PFCpbekgfDpj9mnDhieP67EqXWvl1EWNeZh2rpR4F5B/jcDOHA=="
+      },
+      "sharpservicecollection.sourcegenerator": {
+        "type": "Project"
       }
     }
   }

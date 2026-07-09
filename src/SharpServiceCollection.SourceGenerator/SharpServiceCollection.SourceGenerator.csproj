@@ -1,29 +1,31 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <LangVersion>latest</LangVersion>
-    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
-    <IncludeBuildOutput>false</IncludeBuildOutput>
-    <IsPackable>true</IsPackable>
-    <PackageId>SharpServiceCollection.SourceGenerator</PackageId>
-    <Title>SharpServiceCollection.SourceGenerator</Title>
-    <Description>Source generator for compile-time SharpServiceCollection DI registration.</Description>
-    <PackageTags>dependency injection di source generator aot</PackageTags>
-    <Authors>Md. Redwan Hossain</Authors>
-    <RepositoryUrl>https://github.com/md-redwan-hossain/SharpServiceCollection</RepositoryUrl>
-    <PackageProjectUrl>https://github.com/md-redwan-hossain/SharpServiceCollection</PackageProjectUrl>
-    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-    <NoWarn>CS1591;RS2008</NoWarn>
-  </PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <LangVersion>latest</LangVersion>
+        <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+        <IsRoslynComponent>true</IsRoslynComponent>
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+        <IsPackable>true</IsPackable>
+        <PackageId>SharpServiceCollection.SourceGenerator</PackageId>
+        <Title>SharpServiceCollection.SourceGenerator</Title>
+        <Description>Source generator for compile-time SharpServiceCollection DI registration.</Description>
+        <PackageTags>dependency injection di source generator aot</PackageTags>
+        <Authors>Md. Redwan Hossain</Authors>
+        <RepositoryUrl>https://github.com/md-redwan-hossain/SharpServiceCollection</RepositoryUrl>
+        <PackageProjectUrl>https://github.com/md-redwan-hossain/SharpServiceCollection</PackageProjectUrl>
+        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+        <NoWarn>CS1591;RS2008</NoWarn>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all"/>
+    </ItemGroup>
 
-  <ItemGroup>
-    <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
-  </ItemGroup>
-
+    <!-- ship the DLL into the analyzers folder, not lib -->
+    <ItemGroup>
+        <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false"/>
+    </ItemGroup>
+    
 </Project>
