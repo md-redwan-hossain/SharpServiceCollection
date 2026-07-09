@@ -27,6 +27,7 @@ internal static class GeneratorConstants
         internal const string Namespace = "SharpServiceCollection.Generated";
         internal const string ExtensionsClassName = "GeneratedServiceCollectionExtensions";
         internal const string AddServicesMethodName = "AddGeneratedServices";
+        internal const string AddServicesMethodNamePrefix = "AddGeneratedServicesFrom";
     }
 
     internal static class DependencyInjection

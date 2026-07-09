@@ -32,15 +32,24 @@ Use one of the extension methods on `IServiceCollection`:
 dotnet add package SharpServiceCollection
 ```
 
-The generator emits `AddGeneratedServices()` based on your `InjectableDependency` attributes,
+The generator emits assembly-specific registration methods based on your `InjectableDependency` attributes,
 so you can register dependencies without runtime reflection scanning:
 
 ```csharp
 using SharpServiceCollection.Generated;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Single-assembly convenience alias (forwards to the assembly-specific method below)
 builder.Services.AddGeneratedServices();
+
+// Explicit per-assembly method — use this in multi-assembly solutions to avoid CS0121
+builder.Services.AddGeneratedServicesFromMyApplication();
 ```
+
+Each project emits `AddGeneratedServicesFrom{SanitisedAssemblyName}()` derived from its assembly name
+(for example, `My.Module.Application` becomes `AddGeneratedServicesFromMyModuleApplication`).
+Call the explicit method from your host or module registration code when multiple generated assemblies are referenced.
 
 The existing reflection methods (`AddServicesFromAssembly*`) remain supported for backward compatibility.
 ### ASP.NET Core Setup

@@ -540,6 +540,19 @@ public class SharpServiceCollectionTests
     }
 
     [Fact]
+    public void AddGeneratedServicesFromSharpServiceCollectionTests_RegistersMatchingInterface()
+    {
+        var services = new ServiceCollection();
+
+        services.AddGeneratedServicesFromSharpServiceCollectionTests();
+        var provider = services.BuildServiceProvider();
+
+        var service = provider.GetService<IScopedDependency>();
+        service.ShouldNotBeNull();
+        service.ShouldBeOfType<ScopedDependency>();
+    }
+
+    [Fact]
     public void AddGeneratedServices_RegistersMatchingInterface()
     {
         var services = new ServiceCollection();
