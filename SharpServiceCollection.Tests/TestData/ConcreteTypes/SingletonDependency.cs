@@ -4,8 +4,8 @@ using SharpServiceCollection.Tests.TestData.Interfaces;
 
 namespace SharpServiceCollection.Tests.TestData.ConcreteTypes;
 
-[ResolveByMatchingInterface(InstanceLifetime.Singleton)]
-[ResolveBySelf(InstanceLifetime.Singleton)]
+[InjectableDependency(InstanceLifetime.Singleton, ResolveBy.MatchingInterface, TryAdd = false)]
+[InjectableDependency(InstanceLifetime.Singleton, ResolveBy.Self, TryAdd = false)]
 public class SingletonDependency : ISingletonDependency
 {
 }

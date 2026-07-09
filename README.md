@@ -26,9 +26,8 @@ dependency injection through attribute-based assembly scanning.
 
 - `SharpServiceCollection` will perform lexicographical sort on the class name to register dependency when duplicates
   occur. For example, `Foo` `Bar` `Baz` will be sorted as `Bar` `Baz` `Foo`. If three of them are resolved by
-  `IDemoInterface`, attributes with `TryAdd = false` (or granular `ResolveBy*` attributes) will register the last one,
-  which is `Foo`. Attributes with `TryAdd = true` (or granular `TryResolveBy*` attributes) will register the first
-  one, which is `Bar`.
+  `IDemoInterface`, attributes with `TryAdd = false` will register the last one, which is `Foo`. Attributes with
+  `TryAdd = true` (the default) will register the first one, which is `Bar`.
 - `InstanceLifetime` is an Enum with the values `Singleton` `Scoped` `Transient`
 
 **`ResolveBy` Enum:**
@@ -37,7 +36,7 @@ dependency injection through attribute-based assembly scanning.
 - `ImplementedInterface` - Resolves by all implemented interfaces
 - `MatchingInterface` - Resolves by interface with matching name (e.g., `MyService` → `IMyService`)
 
-### Unified Attribute Approach
+### Attributes
 
 The `InjectableDependencyAttribute` provides a unified approach to dependency registration with flexible resolution
 strategies:
@@ -60,6 +59,7 @@ Optional properties (set in attribute syntax):
 
 - `TryAdd` (default `true`) - When `true`, uses `TryAdd*` / `TryAddKeyed*` methods (skips registration if the service is already registered). When `false`, uses `Add*` / `AddKeyed*` methods.
 - `Key` - For keyed services registration
+- `Enumerable` - When `true` with `TryAdd = true`, registers as enumerable (multiple implementations)
 
 #### Generic Version
 
@@ -79,8 +79,9 @@ Optional properties:
 
 - `TryAdd` (default `true`) - When `true`, uses `TryAdd*` / `TryAddKeyed*` methods. When `false`, uses `Add*` / `AddKeyed*` methods.
 - `Key` - For keyed services registration
+- `Enumerable` - When `true` with `TryAdd = true`, registers as enumerable (multiple implementations)
 
-### Example with Unified Attribute Approach
+### Example
 
 ```csharp
 public interface IUserService
@@ -113,78 +114,18 @@ public class CachedUserService : IUserService
 {
     public string GetUserInfo(int id) => $"Cached User {id} information";
 }
-```
 
-### Granular Attribute Approach
-
-- `IServiceCollection` comes with `Add*` and `TryAdd*` methods. `SharpServiceCollection` offers the same functionality
-  through granular attributes (`ResolveBy*` vs `TryResolveBy*`) or the unified `InjectableDependency` attribute with
-  `TryAdd`.
-- In general, prefer `TryAdd = true` (the default) or `TryResolveBy*` attributes.
-
-```csharp
-
-using SharpServiceCollection.Attributes;
-using SharpServiceCollection.Enums;
-
-// The class will be resolvable by the interface specified in the generic argument
-[TryResolveBy<IScopedDemoService>(InstanceLifetime.Scoped)]
-[ResolveBy<IScopedDemoService>(InstanceLifetime.Scoped)]
-public class ScopedDemoType : IScopedDemoService, IKeyedScopedDemoService
+// Keyed registration
+[InjectableDependency<IUserService>(InstanceLifetime.Scoped, Key = "cached")]
+public class KeyedUserService : IUserService
 {
+    public string GetUserInfo(int id) => $"Keyed User {id} information";
 }
 
-// The class will be resolvable by the interface specified in the generic argument and the key
-[KeyedTryResolveBy<IKeyedScopedDemoService>(InstanceLifetime.Scoped, "keyed")]
-[KeyedResolveBy<IKeyedScopedDemoService>(InstanceLifetime.Scoped, "keyed")]
-public class ScopedDemoType : IScopedDemoService, IKeyedScopedDemoService
-{
-}
-
-// The class will be resolvable by itself
-[TryResolveBySelf(InstanceLifetime.Scoped)]
-[ResolveBySelf(InstanceLifetime.Scoped)]
+// Self registration
+[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.Self)]
 public class ScopedDependency : IScopedDependency
 {
-}
-
-// This will work by convention
-// The class must have to implement an interface that has the same name of the class prefixed with I
-[TryResolveByMatchingInterface(InstanceLifetime.Scoped)]
-[ResolveByMatchingInterface(InstanceLifetime.Scoped)]
-public class ScopedDependency : IScopedDependency
-{
-}
-
-// The class will be resolvable by any of the implementeed interface
-[TryResolveByImplementedInterface(InstanceLifetime.Scoped)]
-[ResolveByImplementedInterface(InstanceLifetime.Scoped)]
-public class FooBarBaz : IFoo, IBar, IBaz
-{
-}
-```
-
-### Example With Granular Attribute Approach
-
-```csharp
-
-public interface IDemoService
-{
-    string Greet();
-}
-```
-
-```csharp
-using SharpServiceCollection.Attributes;
-using SharpServiceCollection.Enums;
-
-[TryResolveByImplementedInterface(InstanceLifetime.Scoped)]
-public class DemoService : IDemoService
-{
-    public string Greet()
-    {
-        return "Hello World!";
-    }
 }
 ```
 

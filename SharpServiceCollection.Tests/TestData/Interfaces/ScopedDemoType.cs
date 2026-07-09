@@ -3,8 +3,8 @@ using SharpServiceCollection.Enums;
 
 namespace SharpServiceCollection.Tests.TestData.Interfaces;
 
-[ResolveBy<IScopedDemoService>(InstanceLifetime.Scoped)]
-[KeyedResolveBy<IKeyedScopedDemoService>(InstanceLifetime.Scoped, "keyed")]
+[InjectableDependency<IScopedDemoService>(InstanceLifetime.Scoped, TryAdd = false)]
+[InjectableDependency<IKeyedScopedDemoService>(InstanceLifetime.Scoped, Key = "keyed", TryAdd = false)]
 public class ScopedDemoType : IScopedDemoService, IKeyedScopedDemoService
 {
 }

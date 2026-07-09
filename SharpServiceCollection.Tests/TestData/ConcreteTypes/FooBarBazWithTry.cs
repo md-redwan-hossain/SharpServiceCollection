@@ -4,7 +4,7 @@ using SharpServiceCollection.Tests.TestData.Interfaces;
 
 namespace SharpServiceCollection.Tests.TestData.ConcreteTypes;
 
-[TryResolveByImplementedInterface(InstanceLifetime.Scoped)]
+[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.ImplementedInterface)]
 public class FooBarBazWithTry : IFoo, IBar, IBaz, IXyz
 {
 }

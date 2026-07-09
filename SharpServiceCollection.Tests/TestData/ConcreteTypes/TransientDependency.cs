@@ -4,8 +4,8 @@ using SharpServiceCollection.Tests.TestData.Interfaces;
 
 namespace SharpServiceCollection.Tests.TestData.ConcreteTypes;
 
-[ResolveByMatchingInterface(InstanceLifetime.Transient)]
-[ResolveBySelf(InstanceLifetime.Transient)]
+[InjectableDependency(InstanceLifetime.Transient, ResolveBy.MatchingInterface, TryAdd = false)]
+[InjectableDependency(InstanceLifetime.Transient, ResolveBy.Self, TryAdd = false)]
 public class TransientDependency : ITransientDependency
 {
 }

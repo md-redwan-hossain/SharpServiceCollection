@@ -4,8 +4,8 @@ using SharpServiceCollection.Tests.TestData.Interfaces;
 
 namespace SharpServiceCollection.Tests.TestData.ConcreteTypes;
 
-[TryResolveBy<ITryResolver>(InstanceLifetime.Scoped)]
-[ResolveBy<IResolver>(InstanceLifetime.Scoped)]
+[InjectableDependency<ITryResolver>(InstanceLifetime.Scoped)]
+[InjectableDependency<IResolver>(InstanceLifetime.Scoped, TryAdd = false)]
 public class Foo : ITryResolver, IResolver
 {
 }
