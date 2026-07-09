@@ -23,6 +23,26 @@ Use one of the extension methods on `IServiceCollection`:
 - `AddServicesFromAssembly(Assembly assembly)`
 - `AddServicesFromAssemblyContaining<T>()`
 - `AddServicesFromAssemblyContaining(Type type)`
+
+### Source-Generated Registration (AOT-friendly)
+
+`SharpServiceCollection` now supports compile-time registration through a separate analyzer package:
+
+```bash
+dotnet add package SharpServiceCollection.SourceGenerator
+```
+
+Once referenced, the generator emits `AddGeneratedServices()` based on your `InjectableDependency` attributes,
+so you can register dependencies without runtime reflection scanning:
+
+```csharp
+using SharpServiceCollection.Generated;
+
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddGeneratedServices();
+```
+
+The existing reflection methods (`AddServicesFromAssembly*`) remain supported for backward compatibility.
 ### ASP.NET Core Setup
 
 ```csharp

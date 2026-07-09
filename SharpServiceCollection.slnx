@@ -1,4 +1,6 @@
 <Solution>
   <Project Path="SharpServiceCollection.Tests/SharpServiceCollection.Tests.csproj" />
+  <Project Path="src/SharpServiceCollection.SourceGenerator/SharpServiceCollection.SourceGenerator.csproj" />
   <Project Path="src/SharpServiceCollection/SharpServiceCollection.csproj" />
+  <Project Path="TrialWebApi/TrialWebApi.csproj" />
 </Solution>

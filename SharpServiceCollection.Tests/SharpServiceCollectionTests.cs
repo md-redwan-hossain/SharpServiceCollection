@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SharpServiceCollection.Attributes;
 using SharpServiceCollection.Enums;
 using SharpServiceCollection.Extensions;
+using SharpServiceCollection.Generated;
 using SharpServiceCollection.Tests.TestData.ConcreteTypes;
 using SharpServiceCollection.Tests.TestData.Interfaces;
 using Shouldly;
@@ -536,5 +537,60 @@ public class SharpServiceCollectionTests
 
         attribute.Enumerable.ShouldBeFalse();
         attribute.TryAdd.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void AddGeneratedServices_RegistersMatchingInterface()
+    {
+        var services = new ServiceCollection();
+
+        services.AddGeneratedServices();
+        var provider = services.BuildServiceProvider();
+
+        var service = provider.GetService<IScopedDependency>();
+        service.ShouldNotBeNull();
+        service.ShouldBeOfType<ScopedDependency>();
+    }
+
+    [Fact]
+    public void AddGeneratedServices_RegistersKeyedServices()
+    {
+        var services = new ServiceCollection();
+
+        services.AddGeneratedServices();
+        var provider = services.BuildServiceProvider();
+
+        var service = provider.GetKeyedService<IKeyedScopedDependency>("keyed");
+        service.ShouldNotBeNull();
+        service.ShouldBeOfType<KeyedScopedDependency>();
+    }
+
+    [Fact]
+    public void AddGeneratedServices_RegistersEnumerableServices()
+    {
+        var services = new ServiceCollection();
+
+        services.AddGeneratedServices();
+        var provider = services.BuildServiceProvider();
+
+        var plugins = provider.GetServices<IEnumerablePlugin>().ToList();
+        plugins.Count.ShouldBe(2);
+        plugins.ShouldContain(p => p is EnumerablePluginPrimary);
+        plugins.ShouldContain(p => p is EnumerablePluginSecondary);
+    }
+
+    [Fact]
+    public void AddGeneratedServices_PreservesOrderSemantics()
+    {
+        var services = new ServiceCollection();
+
+        services.AddGeneratedServices();
+        var provider = services.BuildServiceProvider();
+
+        var tryAddWinner = provider.GetService<IOrderTryResolver>();
+        var addWinner = provider.GetService<IOrderAddResolver>();
+
+        tryAddWinner.ShouldBeOfType<ZebraWinsTryAddResolver>();
+        addWinner.ShouldBeOfType<AlphaWinsAddResolver>();
     }
 }
