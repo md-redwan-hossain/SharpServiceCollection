@@ -396,7 +396,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
 
                          public static class {{GeneratedCode.ExtensionsClassName}}
                          {
-                             public static {{ServiceCollectionType}} {{GeneratedCode.AddServicesMethodName}}(
+                             internal static {{ServiceCollectionType}} {{GeneratedCode.AddServicesMethodName}}(
                                  this {{ServiceCollectionType}} services)
                                  => services.{{assemblySpecificMethodName}}();
 

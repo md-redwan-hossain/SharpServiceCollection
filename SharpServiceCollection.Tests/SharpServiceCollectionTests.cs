@@ -540,11 +540,11 @@ public class SharpServiceCollectionTests
     }
 
     [Fact]
-    public void AddGeneratedServicesFromSharpServiceCollectionTests_RegistersMatchingInterface()
+    public void AddServicesFromSharpServiceCollectionTests_RegistersMatchingInterface()
     {
         var services = new ServiceCollection();
 
-        services.AddGeneratedServicesFromSharpServiceCollectionTests();
+        services.AddServicesFromSharpServiceCollectionTests();
         var provider = services.BuildServiceProvider();
 
         var service = provider.GetService<IScopedDependency>();
@@ -553,11 +553,11 @@ public class SharpServiceCollectionTests
     }
 
     [Fact]
-    public void AddGeneratedServices_RegistersMatchingInterface()
+    public void AddSourceGeneratedServices_RegistersMatchingInterface()
     {
         var services = new ServiceCollection();
 
-        services.AddGeneratedServices();
+        services.AddSourceGeneratedServices();
         var provider = services.BuildServiceProvider();
 
         var service = provider.GetService<IScopedDependency>();
@@ -566,11 +566,11 @@ public class SharpServiceCollectionTests
     }
 
     [Fact]
-    public void AddGeneratedServices_RegistersKeyedServices()
+    public void AddSourceGeneratedServices_RegistersKeyedServices()
     {
         var services = new ServiceCollection();
 
-        services.AddGeneratedServices();
+        services.AddSourceGeneratedServices();
         var provider = services.BuildServiceProvider();
 
         var service = provider.GetKeyedService<IKeyedScopedDependency>("keyed");
@@ -579,11 +579,11 @@ public class SharpServiceCollectionTests
     }
 
     [Fact]
-    public void AddGeneratedServices_RegistersEnumerableServices()
+    public void AddSourceGeneratedServices_RegistersEnumerableServices()
     {
         var services = new ServiceCollection();
 
-        services.AddGeneratedServices();
+        services.AddSourceGeneratedServices();
         var provider = services.BuildServiceProvider();
 
         var plugins = provider.GetServices<IEnumerablePlugin>().ToList();
@@ -593,11 +593,11 @@ public class SharpServiceCollectionTests
     }
 
     [Fact]
-    public void AddGeneratedServices_PreservesOrderSemantics()
+    public void AddSourceGeneratedServices_PreservesOrderSemantics()
     {
         var services = new ServiceCollection();
 
-        services.AddGeneratedServices();
+        services.AddSourceGeneratedServices();
         var provider = services.BuildServiceProvider();
 
         var tryAddWinner = provider.GetService<IOrderTryResolver>();

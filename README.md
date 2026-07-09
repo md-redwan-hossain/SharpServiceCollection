@@ -40,15 +40,16 @@ using SharpServiceCollection.Generated;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Single-assembly convenience alias (forwards to the assembly-specific method below)
-builder.Services.AddGeneratedServices();
+// Same-assembly convenience alias (internal — not visible to referencing projects)
+builder.Services.AddSourceGeneratedServices();
 
-// Explicit per-assembly method — use this in multi-assembly solutions to avoid CS0121
-builder.Services.AddGeneratedServicesFromMyApplication();
+// Explicit per-assembly method — use from host or other assemblies
+builder.Services.AddServicesFromMyApplication();
 ```
 
-Each project emits `AddGeneratedServicesFrom{SanitisedAssemblyName}()` derived from its assembly name
-(for example, `My.Module.Application` becomes `AddGeneratedServicesFromMyModuleApplication`).
+`AddSourceGeneratedServices()` is emitted as **internal** (callable only within the same assembly).
+Each project emits a public `AddServicesFrom{SanitisedAssemblyName}()` derived from its assembly name
+(for example, `My.Module.Application` becomes `AddServicesFromMyModuleApplication`).
 Call the explicit method from your host or module registration code when multiple generated assemblies are referenced.
 
 The existing reflection methods (`AddServicesFromAssembly*`) remain supported for backward compatibility.
