@@ -31,14 +31,9 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddServicesFromAssembly(this IServiceCollection services,
         Assembly assembly)
     {
-        var typesWithAttribute = assembly.GetTypes()
-            .Where(t => t.GetCustomAttributes<InjectableDependencyAttribute>().Any())
-            .OrderBy(t => t.Name)
-            .ToList();
-
-        MapInjectableDependencyMatchingInterface(ref services, typesWithAttribute);
-        MapInjectableDependencyImplementedInterface(ref services, typesWithAttribute);
-        MapInjectableDependencySelf(ref services, typesWithAttribute);
+        MapInjectableDependencyMatchingInterface(ref services, assembly);
+        MapInjectableDependencyImplementedInterface(ref services, assembly);
+        MapInjectableDependencySelf(ref services, assembly);
         MapInjectableDependencyGeneric(ref services, assembly);
 
         return services;
@@ -46,95 +41,48 @@ public static class ServiceCollectionExtensions
 
     private static void MapInjectableDependencyGeneric(ref IServiceCollection services, Assembly assembly)
     {
-        var typesWithAttribute = GetGenericAttributes(assembly, typeof(InjectableDependencyAttribute<>));
+        var entries = GetSortedGenericEntries(assembly, typeof(InjectableDependencyAttribute<>));
 
-        foreach (var implType in typesWithAttribute)
+        foreach (var (implType, attribute) in entries)
         {
-            var attributes = GetAttributeImplementations(implType, typeof(InjectableDependencyAttribute<>));
+            var resolverType = attribute.GetType().GetGenericArguments()[0];
 
-            foreach (var attribute in attributes)
+            if (attribute is not (IServiceLifetime attributeWithLifetime
+                and IServiceKey attributeWithServiceKey
+                and ITryAddService attributeWithTryAdd))
             {
-                var resolverType = attribute.GetType().GetGenericArguments()[0];
+                continue;
+            }
 
-                if (attribute is not (IServiceLifetime attributeWithLifetime
-                    and IServiceKey attributeWithServiceKey
-                    and ITryAddService attributeWithTryAdd))
-                {
-                    continue;
-                }
+            var isKeyed = !string.IsNullOrEmpty(attributeWithServiceKey.Key);
 
-                var isKeyed = !string.IsNullOrEmpty(attributeWithServiceKey.Key);
-
-                if (isKeyed)
-                {
-                    RegisterKeyed(services, resolverType, implType, attributeWithLifetime.Lifetime,
-                        attributeWithServiceKey.Key, attributeWithTryAdd.TryAdd);
-                }
-                else
-                {
-                    RegisterNonKeyed(services, resolverType, implType, attributeWithLifetime.Lifetime,
-                        attributeWithTryAdd.TryAdd, attributeWithTryAdd.Enumerable);
-                }
+            if (isKeyed)
+            {
+                RegisterKeyed(services, resolverType, implType, attributeWithLifetime.Lifetime,
+                    attributeWithServiceKey.Key, attributeWithTryAdd.TryAdd);
+            }
+            else
+            {
+                RegisterNonKeyed(services, resolverType, implType, attributeWithLifetime.Lifetime,
+                    attributeWithTryAdd.TryAdd, attributeWithTryAdd.Enumerable);
             }
         }
     }
 
     private static void MapInjectableDependencyImplementedInterface(ref IServiceCollection services,
-        List<Type> typesWithAttribute)
+        Assembly assembly)
     {
-        foreach (var implType in typesWithAttribute)
+        var entries = GetSortedEntries(assembly, t =>
+            t.GetCustomAttributes<InjectableDependencyAttribute>()
+                .Where(a => a.ResolveBy == ResolveBy.ImplementedInterface));
+
+        foreach (var (implType, attribute) in entries)
         {
-            var attributes = implType.GetCustomAttributes<InjectableDependencyAttribute>();
+            var interfaceTypes = implType.GetInterfaces();
 
-            foreach (var attribute in attributes)
+            foreach (var interfaceType in interfaceTypes)
             {
-                var interfaceTypes = implType.GetInterfaces();
-
-                foreach (var interfaceType in interfaceTypes)
-                {
-                    if (attribute is null || !interfaceType.IsAssignableFrom(implType))
-                    {
-                        continue;
-                    }
-
-                    if (attribute.ResolveBy != ResolveBy.ImplementedInterface)
-                    {
-                        continue;
-                    }
-
-                    if (!string.IsNullOrEmpty(attribute.Key))
-                    {
-                        RegisterKeyed(services, interfaceType, implType, attribute.Lifetime, attribute.Key,
-                            attribute.TryAdd);
-                    }
-                    else
-                    {
-                        RegisterNonKeyed(services, interfaceType, implType, attribute.Lifetime, attribute.TryAdd,
-                            attribute.Enumerable);
-                    }
-                }
-            }
-        }
-    }
-
-    private static void MapInjectableDependencyMatchingInterface(ref IServiceCollection services,
-        List<Type> typesWithAttribute)
-    {
-        foreach (var implType in typesWithAttribute)
-        {
-            var attributes = implType.GetCustomAttributes<InjectableDependencyAttribute>();
-
-            foreach (var attribute in attributes)
-            {
-                var interfaceName = $"I{implType.Name}";
-                var interfaceType = implType.GetInterface(interfaceName);
-
-                if (interfaceType is null || !interfaceType.IsAssignableFrom(implType))
-                {
-                    continue;
-                }
-
-                if (attribute.ResolveBy != ResolveBy.MatchingInterface)
+                if (!interfaceType.IsAssignableFrom(implType))
                 {
                     continue;
                 }
@@ -153,32 +101,77 @@ public static class ServiceCollectionExtensions
         }
     }
 
-    private static void MapInjectableDependencySelf(ref IServiceCollection services,
-        List<Type> typesWithAttribute)
+    private static void MapInjectableDependencyMatchingInterface(ref IServiceCollection services,
+        Assembly assembly)
     {
-        foreach (var implType in typesWithAttribute)
+        var entries = GetSortedEntries(assembly, t =>
+            t.GetCustomAttributes<InjectableDependencyAttribute>()
+                .Where(a => a.ResolveBy == ResolveBy.MatchingInterface));
+
+        foreach (var (implType, attribute) in entries)
         {
-            var attributes = implType.GetCustomAttributes(typeof(InjectableDependencyAttribute), inherit: false)
-                .Cast<InjectableDependencyAttribute>();
+            var interfaceName = $"I{implType.Name}";
+            var interfaceType = implType.GetInterface(interfaceName);
 
-            foreach (var attribute in attributes)
+            if (interfaceType is null || !interfaceType.IsAssignableFrom(implType))
             {
-                if (attribute.ResolveBy != ResolveBy.Self)
-                {
-                    continue;
-                }
+                continue;
+            }
 
-                if (!string.IsNullOrEmpty(attribute.Key))
-                {
-                    RegisterKeyedSelf(services, implType, attribute.Lifetime, attribute.Key, attribute.TryAdd);
-                }
-                else
-                {
-                    RegisterNonKeyed(services, implType, implType, attribute.Lifetime, attribute.TryAdd,
-                        attribute.Enumerable);
-                }
+            if (!string.IsNullOrEmpty(attribute.Key))
+            {
+                RegisterKeyed(services, interfaceType, implType, attribute.Lifetime, attribute.Key,
+                    attribute.TryAdd);
+            }
+            else
+            {
+                RegisterNonKeyed(services, interfaceType, implType, attribute.Lifetime, attribute.TryAdd,
+                    attribute.Enumerable);
             }
         }
+    }
+
+    private static void MapInjectableDependencySelf(ref IServiceCollection services,
+        Assembly assembly)
+    {
+        var entries = GetSortedEntries(assembly, t =>
+            t.GetCustomAttributes<InjectableDependencyAttribute>(inherit: false)
+                .Where(a => a.ResolveBy == ResolveBy.Self));
+
+        foreach (var (implType, attribute) in entries)
+        {
+            if (!string.IsNullOrEmpty(attribute.Key))
+            {
+                RegisterKeyedSelf(services, implType, attribute.Lifetime, attribute.Key, attribute.TryAdd);
+            }
+            else
+            {
+                RegisterNonKeyed(services, implType, implType, attribute.Lifetime, attribute.TryAdd,
+                    attribute.Enumerable);
+            }
+        }
+    }
+
+    private static IEnumerable<(Type ImplType, InjectableDependencyAttribute Attribute)> GetSortedEntries(
+        Assembly assembly,
+        Func<Type, IEnumerable<InjectableDependencyAttribute>> getAttributes)
+    {
+        return assembly.GetTypes()
+            .SelectMany(t => getAttributes(t).Select(a => (ImplType: t, Attribute: a)))
+            .OrderBy(e => e.Attribute.Order)
+            .ThenBy(e => e.ImplType.Name);
+    }
+
+    private static IEnumerable<(Type ImplType, Attribute Attribute)> GetSortedGenericEntries(
+        Assembly assembly,
+        Type genericAttributeDefinition)
+    {
+        return assembly.GetTypes()
+            .SelectMany(t => GetAttributeImplementations(t, genericAttributeDefinition)
+                .Select(a => (ImplType: t, Attribute: a)))
+            .Where(e => e.Attribute is IServiceOrder)
+            .OrderBy(e => ((IServiceOrder)e.Attribute).Order)
+            .ThenBy(e => e.ImplType.Name);
     }
 
     private static ServiceLifetime ToServiceLifetime(InstanceLifetime lifetime)
@@ -328,14 +321,6 @@ public static class ServiceCollectionExtensions
             default:
                 throw new InvalidEnumArgumentException();
         }
-    }
-
-    private static IEnumerable<Type> GetGenericAttributes(Assembly assembly, Type targetType)
-    {
-        return assembly.GetTypes()
-            .Where(t => t.GetCustomAttributes().Any(attr =>
-                attr.GetType().IsGenericType && attr.GetType().GetGenericTypeDefinition() == targetType))
-            .OrderBy(t => t.Name);
     }
 
     private static IEnumerable<Attribute> GetAttributeImplementations(Type implType, Type targetType)

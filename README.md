@@ -12,134 +12,288 @@ from [Nuget](https://www.nuget.org/packages/SharpServiceCollection)
 `SharpServiceCollection` is a lightweight C# library that wraps the `IServiceCollection` interface to streamline
 dependency injection through attribute-based assembly scanning.
 
-### Usage
+Annotate a class with `InjectableDependency` or `InjectableDependency<T>`, scan the assembly, and the library calls the
+equivalent `Add*` / `TryAdd*` / `AddKeyed*` / `TryAddKeyed*` / `TryAddEnumerable` methods for you.
 
-- `SharpServiceCollection` scans an assembly to automatically register services in the `IServiceCollection` container.
-- Use one of the extension methods of `IServiceCollection` to perform assembly scanning.
+### Assembly Scanning
 
-    - `AddServicesFromCurrentAssembly()`
-    - `AddServicesFromAssembly(Assembly assembly)`
-    - `AddServicesFromAssemblyContaining<T>()`
-    - `AddServicesFromAssemblyContaining(Type type)`
+Use one of the extension methods on `IServiceCollection`:
 
-### Notes:
-
-- `SharpServiceCollection` will perform lexicographical sort on the class name to register dependency when duplicates
-  occur. For example, `Foo` `Bar` `Baz` will be sorted as `Bar` `Baz` `Foo`. If three of them are resolved by
-  `IDemoInterface`, attributes with `TryAdd = false` will register the last one, which is `Foo`. Attributes with
-  `TryAdd = true` (the default) will register the first one, which is `Bar`.
-- `InstanceLifetime` is an Enum with the values `Singleton` `Scoped` `Transient`
-
-**`ResolveBy` Enum:**
-
-- `Self` - Resolves the class by itself
-- `ImplementedInterface` - Resolves by all implemented interfaces
-- `MatchingInterface` - Resolves by interface with matching name (e.g., `MyService` → `IMyService`)
-
-### Attributes
-
-The `InjectableDependencyAttribute` provides a unified approach to dependency registration with flexible resolution
-strategies:
-
-#### Non-Generic Version
-
-```csharp
-[InjectableDependency(InstanceLifetime lifetime, ResolveBy resolveBy)]
-```
-
-Optional properties (set in attribute syntax):
-
-```csharp
-[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.MatchingInterface, TryAdd = false)]
-[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.Self, Key = "my-key")]
-[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.ImplementedInterface, TryAdd = false, Key = "my-key")]
-```
-
-**Optional properties:**
-
-- `TryAdd` (default `true`) - When `true`, uses `TryAdd*` / `TryAddKeyed*` methods (skips registration if the service is already registered). When `false`, uses `Add*` / `AddKeyed*` methods.
-- `Key` - For keyed services registration
-- `Enumerable` - When `true` with `TryAdd = true`, registers as enumerable (multiple implementations)
-
-#### Generic Version
-
-```csharp
-[InjectableDependency<T>(InstanceLifetime lifetime)]
-```
-
-Optional properties:
-
-```csharp
-[InjectableDependency<IUserService>(InstanceLifetime.Singleton, TryAdd = false)]
-[InjectableDependency<IUserService>(InstanceLifetime.Singleton, Key = "my-key")]
-[InjectableDependency<IUserService>(InstanceLifetime.Singleton, TryAdd = false, Key = "my-key")]
-```
-
-**Optional properties:**
-
-- `TryAdd` (default `true`) - When `true`, uses `TryAdd*` / `TryAddKeyed*` methods. When `false`, uses `Add*` / `AddKeyed*` methods.
-- `Key` - For keyed services registration
-- `Enumerable` - When `true` with `TryAdd = true`, registers as enumerable (multiple implementations)
-
-### Example
-
-```csharp
-public interface IUserService
-{
-    string GetUserInfo(int id);
-}
-```
-
-```csharp
-using SharpServiceCollection.Attributes;
-using SharpServiceCollection.Enums;
-
-// Non-generic version (TryAdd defaults to true)
-[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.ImplementedInterface)]
-public class UserService : IUserService
-{
-    public string GetUserInfo(int id) => $"User {id} information";
-}
-
-// Non-generic version with Add* registration
-[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.MatchingInterface, TryAdd = false)]
-public class PrimaryUserService : IUserService
-{
-    public string GetUserInfo(int id) => $"User {id} information";
-}
-
-// Generic version (TryAdd defaults to true)
-[InjectableDependency<IUserService>(InstanceLifetime.Singleton)]
-public class CachedUserService : IUserService
-{
-    public string GetUserInfo(int id) => $"Cached User {id} information";
-}
-
-// Keyed registration
-[InjectableDependency<IUserService>(InstanceLifetime.Scoped, Key = "cached")]
-public class KeyedUserService : IUserService
-{
-    public string GetUserInfo(int id) => $"Keyed User {id} information";
-}
-
-// Self registration
-[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.Self)]
-public class ScopedDependency : IScopedDependency
-{
-}
-```
+- `AddServicesFromCurrentAssembly()`
+- `AddServicesFromAssembly(Assembly assembly)`
+- `AddServicesFromAssemblyContaining<T>()`
+- `AddServicesFromAssemblyContaining(Type type)`
+### ASP.NET Core Setup
 
 ```csharp
 using SharpServiceCollection.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Current assembly will be scanned by Assembly.GetCallingAssembly()
 builder.Services.AddServicesFromCurrentAssembly();
 
 var app = builder.Build();
 
-app.MapGet("/", (IDemoService demoService) => demoService.Greet());
+app.MapGet("/user/{id}", (IUserService userService, int id) => userService.GetUserInfo(id));
 
 app.Run();
 ```
+
+
+### How Attributes Replace `IServiceCollection` Calls
+
+Instead of registering services by hand, annotate the implementation class and scan the assembly.
+
+#### Self registration
+
+```csharp
+// Manual
+services.AddScoped<MyService>();
+```
+
+```csharp
+// Attribute
+[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.Self, TryAdd = false)]
+public class MyService { }
+```
+
+```csharp
+// Manual
+services.TryAddScoped<MyService>();
+```
+
+```csharp
+// Attribute
+[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.Self)]
+public class MyService { }
+```
+
+#### Matching interface (`IMyService` for `MyService`)
+
+```csharp
+// Manual
+services.AddScoped<IMyService, MyService>();
+```
+
+```csharp
+// Attribute
+[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.MatchingInterface, TryAdd = false)]
+public class MyService : IMyService { }
+```
+
+```csharp
+// Manual
+services.TryAddScoped<IMyService, MyService>();
+```
+
+```csharp
+// Attribute
+[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.MatchingInterface)]
+public class MyService : IMyService { }
+```
+
+#### Implemented interface (each implemented interface)
+
+```csharp
+// Manual
+services.AddScoped<IFoo, MyService>();
+```
+
+```csharp
+// Attribute
+[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.ImplementedInterface, TryAdd = false)]
+public class MyService : IFoo, IBar { }
+```
+
+```csharp
+// Manual
+services.TryAddScoped<IFoo, MyService>();
+```
+
+```csharp
+// Attribute
+[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.ImplementedInterface)]
+public class MyService : IFoo, IBar { }
+```
+
+#### Explicit interface (`InjectableDependency<T>`)
+
+```csharp
+// Manual
+services.AddScoped<IMyService, MyService>();
+```
+
+```csharp
+// Attribute
+[InjectableDependency<IMyService>(InstanceLifetime.Scoped, TryAdd = false)]
+public class MyService : IMyService { }
+```
+
+```csharp
+// Manual
+services.TryAddScoped<IMyService, MyService>();
+```
+
+```csharp
+// Attribute
+[InjectableDependency<IMyService>(InstanceLifetime.Scoped)]
+public class MyService : IMyService { }
+```
+
+#### Keyed registration
+
+```csharp
+// Manual
+services.AddKeyedScoped<IMyService>("key", typeof(MyService));
+```
+
+```csharp
+// Attribute
+[InjectableDependency<IMyService>(InstanceLifetime.Scoped, Key = "key", TryAdd = false)]
+public class MyService : IMyService { }
+```
+
+```csharp
+// Manual
+services.TryAddKeyedScoped<IMyService>("key", typeof(MyService));
+```
+
+```csharp
+// Attribute
+[InjectableDependency<IMyService>(InstanceLifetime.Scoped, Key = "key")]
+public class MyService : IMyService { }
+```
+
+#### Enumerable registration (multiple implementations)
+
+```csharp
+// Manual
+services.TryAddEnumerable(ServiceDescriptor.Scoped<IPlugin, PluginA>());
+```
+
+```csharp
+// Attribute
+[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.ImplementedInterface, Enumerable = true)]
+public class PluginA : IPlugin { }
+```
+
+Apply the same attribute to each implementation (`PluginB`, `PluginC`, …) to register them all.
+
+#### Multiple registrations on one class
+
+```csharp
+// Manual
+services.TryAddScoped<IMyService, MyService>();
+services.AddScoped<MyService>();
+```
+
+```csharp
+// Attribute
+[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.MatchingInterface)]
+[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.Self, TryAdd = false)]
+public class MyService : IMyService { }
+```
+
+### Attributes
+
+Two attributes cover the registration surface of `IServiceCollection`:
+
+```csharp
+[InjectableDependency(InstanceLifetime lifetime, ResolveBy resolveBy)]
+[InjectableDependency<T>(InstanceLifetime lifetime)]
+```
+
+Both support optional properties: `TryAdd` (default `true`), `Key`, `Enumerable`, and `Order` (default `0`).
+
+**`ResolveBy` enum** (`InstanceLifetime` values: `Singleton`, `Scoped`, `Transient`):
+
+- `Self` — register as the concrete class
+- `MatchingInterface` — register as `I{ClassName}` (e.g. `MyService` → `IMyService`)
+- `ImplementedInterface` — register for each implemented interface
+
+Use `InjectableDependency<T>` when you want to register as a specific interface without convention.
+
+### Optional Properties
+
+#### `TryAdd` (default `true`)
+
+Controls whether `Add*` or `TryAdd*` is used.
+
+```csharp
+// Manual — always registers (overwrites existing)
+services.AddScoped<IMyService, MyService>();
+```
+
+```csharp
+// Attribute
+[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.MatchingInterface, TryAdd = false)]
+public class MyService : IMyService { }
+```
+
+```csharp
+// Manual — skips if already registered
+services.TryAddScoped<IMyService, MyService>();
+```
+
+```csharp
+// Attribute (TryAdd defaults to true)
+[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.MatchingInterface)]
+public class MyService : IMyService { }
+```
+
+#### `Key`
+
+Switches plain registration to keyed registration.
+
+```csharp
+// Manual
+services.AddKeyedScoped<IMyService>("key", typeof(MyService));
+```
+
+```csharp
+// Attribute
+[InjectableDependency<IMyService>(InstanceLifetime.Scoped, Key = "key", TryAdd = false)]
+public class MyService : IMyService { }
+```
+
+#### `Enumerable` (`TryAdd` must not be set to `false`)
+
+Registers multiple implementations of the same service type.
+
+```csharp
+// Manual
+services.TryAddEnumerable(ServiceDescriptor.Scoped<IPlugin, PluginA>());
+```
+
+```csharp
+// Attribute
+[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.ImplementedInterface, Enumerable = true)]
+public class PluginA : IPlugin { }
+```
+
+### Duplicate Registration
+
+When multiple classes register the same service type, implementations are processed in **`Order` ascending**, then by
+class name ascending. For example, with default `Order = 0`, `Foo`, `Bar`, `Baz` are processed as `Bar`, `Baz`, `Foo`.
+
+- `TryAdd = true` (default) — first processed wins (lowest `Order`; tie → earliest class name)
+- `TryAdd = false` — last processed wins (highest `Order`; tie → latest class name)
+
+Use `Order` to control which implementation wins without renaming classes:
+
+```csharp
+// Manual — registration order is explicit
+services.TryAddScoped<IWorker, ZebraWorker>();
+services.TryAddScoped<IWorker, AlphaWorker>(); // ignored; ZebraWorker already registered
+```
+
+```csharp
+// Attribute — ZebraWorker wins despite sorting after AlphaWorker by class name
+[InjectableDependency<IWorker>(InstanceLifetime.Scoped, Order = 1)]
+public class ZebraWorker : IWorker { }
+
+[InjectableDependency<IWorker>(InstanceLifetime.Scoped, Order = 2)]
+public class AlphaWorker : IWorker { }
+```
+
+`Enumerable = true` registrations follow the same sort order when resolving `IEnumerable<T>`.

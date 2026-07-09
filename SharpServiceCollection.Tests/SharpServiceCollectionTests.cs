@@ -490,6 +490,42 @@ public class SharpServiceCollectionTests
     }
 
     [Fact]
+    public void OrderTryAdd_LowerOrderWins_OverClassName()
+    {
+        // Arrange
+        var serviceCollection = new ServiceCollection();
+        var assembly = Assembly.GetExecutingAssembly();
+
+        // Act
+        serviceCollection.AddServicesFromAssembly(assembly);
+        var serviceProvider = serviceCollection.BuildServiceProvider();
+
+        // Assert — ZebraWinsTryAddResolver (Order = 1) wins over AlphaLosesTryAddResolver (Order = 2)
+        // despite Alpha sorting first by class name
+        var service = serviceProvider.GetService<IOrderTryResolver>();
+        service.ShouldNotBeNull();
+        service.ShouldBeOfType<ZebraWinsTryAddResolver>();
+    }
+
+    [Fact]
+    public void OrderAdd_HigherOrderWins_OverClassName()
+    {
+        // Arrange
+        var serviceCollection = new ServiceCollection();
+        var assembly = Assembly.GetExecutingAssembly();
+
+        // Act
+        serviceCollection.AddServicesFromAssembly(assembly);
+        var serviceProvider = serviceCollection.BuildServiceProvider();
+
+        // Assert — AlphaWinsAddResolver (Order = 2) wins over ZebraLosesAddResolver (Order = 1)
+        // despite Zebra sorting first by class name
+        var service = serviceProvider.GetService<IOrderAddResolver>();
+        service.ShouldNotBeNull();
+        service.ShouldBeOfType<AlphaWinsAddResolver>();
+    }
+
+    [Fact]
     public void InjectableDependencyAttribute_EnumerableFalse_WhenTryAddFalse_DoesNotThrow()
     {
         var attribute = new InjectableDependencyAttribute(InstanceLifetime.Scoped, ResolveBy.Self)
