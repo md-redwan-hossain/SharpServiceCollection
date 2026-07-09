@@ -8,6 +8,9 @@
 
     <ItemGroup>
       <ProjectReference Include="..\src\SharpServiceCollection\SharpServiceCollection.csproj" />
+      <ProjectReference Include="..\src\SharpServiceCollection.SourceGenerator\SharpServiceCollection.SourceGenerator.csproj"
+                        OutputItemType="Analyzer"
+                        ReferenceOutputAssembly="false" />
     </ItemGroup>
 
 </Project>

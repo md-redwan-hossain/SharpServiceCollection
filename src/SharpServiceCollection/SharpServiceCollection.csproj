@@ -12,10 +12,9 @@
     </ItemGroup>
     
     <ItemGroup>
-
         <ProjectReference Include="..\SharpServiceCollection.SourceGenerator\SharpServiceCollection.SourceGenerator.csproj"
                           PrivateAssets="all"
-                          IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive"/>
+                          ReferenceOutputAssembly="false"/>
     </ItemGroup>
 
     <ItemGroup>
