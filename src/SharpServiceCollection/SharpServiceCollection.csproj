@@ -5,16 +5,25 @@
     </ItemGroup>
 
     <ItemGroup>
+        <None Include="..\SharpServiceCollection.SourceGenerator\bin\$(Configuration)\netstandard2.0\SharpServiceCollection.SourceGenerator.dll"
+              Pack="true"
+              Visible="false"
+              PackagePath="analyzers/dotnet/cs"/>
+    </ItemGroup>
+    
+    <ItemGroup>
+
         <ProjectReference Include="..\SharpServiceCollection.SourceGenerator\SharpServiceCollection.SourceGenerator.csproj"
                           PrivateAssets="all"
-                          ReferenceOutputAssembly="false"/>
+                          IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Analyzer Include="..\SharpServiceCollection.SourceGenerator\bin\$(Configuration)\netstandard2.0\SharpServiceCollection.SourceGenerator.dll"/>
     </ItemGroup>
 
     <ItemGroup>
         <Compile Remove="Generated/**/*.cs"/>
-        <None Include="buildTransitive\SharpServiceCollection.targets"
-              Pack="true"
-              PackagePath="buildTransitive"/>
     </ItemGroup>
 
     <PropertyGroup>
@@ -50,10 +59,6 @@
             <Link>README.md</Link>
             <PackagePath>.</PackagePath>
         </None>
-        <None Include="..\SharpServiceCollection.SourceGenerator\bin\$(Configuration)\netstandard2.0\SharpServiceCollection.SourceGenerator.dll"
-              Pack="true"
-              Visible="false"
-              PackagePath="analyzers/dotnet/cs"/>
     </ItemGroup>
 
 

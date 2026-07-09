@@ -26,13 +26,13 @@ Use one of the extension methods on `IServiceCollection`:
 
 ### Source-Generated Registration (AOT-friendly)
 
-`SharpServiceCollection` now supports compile-time registration through a separate analyzer package:
+`SharpServiceCollection` ships the source generator inside the main NuGet package. Install only:
 
 ```bash
-dotnet add package SharpServiceCollection.SourceGenerator
+dotnet add package SharpServiceCollection
 ```
 
-Once referenced, the generator emits `AddGeneratedServices()` based on your `InjectableDependency` attributes,
+The generator emits `AddGeneratedServices()` based on your `InjectableDependency` attributes,
 so you can register dependencies without runtime reflection scanning:
 
 ```csharp
