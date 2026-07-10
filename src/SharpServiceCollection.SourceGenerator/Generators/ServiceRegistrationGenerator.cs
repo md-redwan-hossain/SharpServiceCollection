@@ -16,6 +16,10 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
 {
     private const string Indent = "        ";
 
+    // Always LF — valid C# on every OS, and avoids RS1035 (Environment is banned in analyzers).
+    // AppendLine would embed the build machine's newline and break cross-platform diffs.
+    private const string NewLine = "\n";
+
     private readonly record struct TypeAnalysisResult(ImmutableArray<Diagnostic> Diagnostics);
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
@@ -406,37 +410,38 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         StringBuilder builder,
         IReadOnlyList<ItemRegistrationDescriptor> items)
     {
-        builder.AppendLine(
-            $"    public static async Task<{ServiceCollectionType}> {HostMethodName}(");
-        builder.AppendLine($"        this {ServiceCollectionType} services)");
-        builder.AppendLine("    {");
-
         if (items.Count == 0)
         {
-            builder.AppendLine($"{Indent}await Task.CompletedTask;");
-            builder.AppendLine($"{Indent}return services;");
-            builder.AppendLine("    }");
-            builder.AppendLine();
+            AppendSourceLine(
+                builder,
+                $$"""
+                      public static async Task<{{ServiceCollectionType}}> {{HostMethodName}}(
+                          this {{ServiceCollectionType}} services)
+                      {
+                  {{Indent}}await Task.CompletedTask;
+                  {{Indent}}return services;
+                      }
+                  """);
+            AppendSourceLine(builder);
             return;
         }
 
-        builder.AppendLine($"{Indent}global::{BaseTypeMetadataName}[] items =");
-        builder.AppendLine($"{Indent}[");
-        foreach (var item in items)
-        {
-            builder.AppendLine($"{Indent}    new {item.FullyQualifiedTypeName}(),");
-        }
+        AppendSourceLine(
+            builder,
+            $$"""
+                  public static async Task<{{ServiceCollectionType}}> {{HostMethodName}}(
+                      this {{ServiceCollectionType}} services)
+                  {
+              """);
 
-        builder.AppendLine($"{Indent}];");
-        builder.AppendLine();
-        builder.AppendLine($"{Indent}foreach (var item in items.OrderByDescending(i => i.Priority))");
-        builder.AppendLine($"{Indent}{{");
-        builder.AppendLine($"{Indent}    await item.{ExecuteMethodName}(services);");
-        builder.AppendLine($"{Indent}}}");
-        builder.AppendLine();
-        builder.AppendLine($"{Indent}return services;");
-        builder.AppendLine("    }");
-        builder.AppendLine();
+        AppendItemsLoopBody(
+            builder,
+            items,
+            arrayTypeDeclaration: $"global::{BaseTypeMetadataName}[]",
+            executeArguments: "services");
+
+        AppendSourceLine(builder, "    }");
+        AppendSourceLine(builder);
     }
 
     private static void AppendGenericMethod(
@@ -444,27 +449,55 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         string contextTypeName,
         IReadOnlyList<ItemRegistrationDescriptor> items)
     {
-        builder.AppendLine(
-            $"    public static async Task<{ServiceCollectionType}> {HostMethodName}(");
-        builder.AppendLine($"        this {ServiceCollectionType} services,");
-        builder.AppendLine($"        {contextTypeName} context)");
-        builder.AppendLine("    {");
-        builder.AppendLine($"{Indent}global::{BaseTypeMetadataName}<{contextTypeName}>[] items =");
-        builder.AppendLine($"{Indent}[");
+        AppendSourceLine(
+            builder,
+            $$"""
+                  public static async Task<{{ServiceCollectionType}}> {{HostMethodName}}(
+                      this {{ServiceCollectionType}} services,
+                      {{contextTypeName}} context)
+                  {
+              """);
+
+        AppendItemsLoopBody(
+            builder,
+            items,
+            arrayTypeDeclaration: $"global::{BaseTypeMetadataName}<{contextTypeName}>[]",
+            executeArguments: "services, context");
+
+        AppendSourceLine(builder, "    }");
+        AppendSourceLine(builder);
+    }
+
+    private static void AppendItemsLoopBody(
+        StringBuilder builder,
+        IReadOnlyList<ItemRegistrationDescriptor> items,
+        string arrayTypeDeclaration,
+        string executeArguments)
+    {
+        AppendSourceLine(builder, $"{Indent}{arrayTypeDeclaration} items =");
+        AppendSourceLine(builder, $"{Indent}[");
         foreach (var item in items)
         {
-            builder.AppendLine($"{Indent}    new {item.FullyQualifiedTypeName}(),");
+            AppendSourceLine(builder, $"{Indent}    new {item.FullyQualifiedTypeName}(),");
         }
 
-        builder.AppendLine($"{Indent}];");
-        builder.AppendLine();
-        builder.AppendLine($"{Indent}foreach (var item in items.OrderByDescending(i => i.Priority))");
-        builder.AppendLine($"{Indent}{{");
-        builder.AppendLine($"{Indent}    await item.{ExecuteMethodName}(services, context);");
-        builder.AppendLine($"{Indent}}}");
-        builder.AppendLine();
-        builder.AppendLine($"{Indent}return services;");
-        builder.AppendLine("    }");
-        builder.AppendLine();
+        AppendSourceLine(builder, $"{Indent}];");
+        AppendSourceLine(builder);
+        AppendSourceLine(builder, $"{Indent}foreach (var item in items.OrderByDescending(i => i.Priority))");
+        AppendSourceLine(builder, $"{Indent}{{");
+        AppendSourceLine(builder, $"{Indent}    await item.{ExecuteMethodName}({executeArguments});");
+        AppendSourceLine(builder, $"{Indent}}}");
+        AppendSourceLine(builder);
+        AppendSourceLine(builder, $"{Indent}return services;");
+    }
+
+    private static void AppendSourceLine(StringBuilder builder, string? line = null)
+    {
+        if (line is not null)
+        {
+            builder.Append(line);
+        }
+
+        builder.Append(NewLine);
     }
 }
