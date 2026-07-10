@@ -30,6 +30,20 @@ internal static class GeneratorConstants
         internal const string AddServicesMethodNamePrefix = "AddAttributedServicesFrom";
     }
 
+    internal static class ServiceRegistration
+    {
+        internal const string ClassName = "ServiceRegistration";
+        internal const string BaseTypeName = "ServiceRegistrationBase";
+        internal const string BaseTypeNamespace = "SharpServiceCollection";
+        internal const string BaseTypeMetadataName = BaseTypeNamespace + "." + BaseTypeName;
+        internal const string ExecuteMethodName = "ExecuteAsync";
+        internal const string HostMethodName = "ExecuteServiceRegistrationsAsync";
+        internal const string GeneratedFileName = "SharpServiceCollection.ServiceRegistration.g.cs";
+        internal const string ExtensionsClassName = "GeneratedServiceRegistrationExtensions";
+        internal const string MsBuildPropertyName = "ServiceRegistrationRoot";
+        internal const string MsBuildPropertyKey = "build_property." + MsBuildPropertyName;
+    }
+
     internal static class DependencyInjection
     {
         internal const string ServiceCollectionType =

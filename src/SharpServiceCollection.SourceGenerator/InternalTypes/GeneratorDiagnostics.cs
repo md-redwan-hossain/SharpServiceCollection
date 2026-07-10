@@ -61,4 +61,46 @@ internal static class GeneratorDiagnostics
         isEnabledByDefault: true,
         description: InvalidResolveByDescription,
         helpLinkUri: string.Format(HelpLinkUriFormat, "source-generated-registration-aot-friendly"));
+
+    private const string ServiceRegistrationMustBeNamedTitle = "Service registration type must be named ServiceRegistration";
+    private const string ServiceRegistrationMustBeNamedDescription =
+        "Types that inherit ServiceRegistrationBase or ServiceRegistrationBase<T> must be named ServiceRegistration.";
+
+    private const string ServiceRegistrationMustBeSealedTitle = "Service registration type must be sealed";
+    private const string ServiceRegistrationMustBeSealedDescription =
+        "Types that inherit ServiceRegistrationBase or ServiceRegistrationBase<T> must be sealed.";
+
+    private const string ServiceRegistrationMissingCtorTitle = "Service registration type requires a parameterless constructor";
+    private const string ServiceRegistrationMissingCtorDescription =
+        "ServiceRegistration must have an accessible parameterless constructor so the host can instantiate it.";
+
+    internal static readonly DiagnosticDescriptor ServiceRegistrationMustBeNamed = new(
+        id: "SSC005",
+        title: ServiceRegistrationMustBeNamedTitle,
+        messageFormat: "Type '{0}' inherits ServiceRegistrationBase but must be named 'ServiceRegistration'",
+        category: GeneratorConstants.DiagnosticCategory,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: ServiceRegistrationMustBeNamedDescription,
+        helpLinkUri: string.Format(HelpLinkUriFormat, "module-service-registration"));
+
+    internal static readonly DiagnosticDescriptor ServiceRegistrationMustBeSealed = new(
+        id: "SSC006",
+        title: ServiceRegistrationMustBeSealedTitle,
+        messageFormat: "Type '{0}' inherits ServiceRegistrationBase but must be sealed",
+        category: GeneratorConstants.DiagnosticCategory,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: ServiceRegistrationMustBeSealedDescription,
+        helpLinkUri: string.Format(HelpLinkUriFormat, "module-service-registration"));
+
+    internal static readonly DiagnosticDescriptor ServiceRegistrationMissingParameterlessConstructor = new(
+        id: "SSC007",
+        title: ServiceRegistrationMissingCtorTitle,
+        messageFormat: "Type '{0}' must have an accessible parameterless constructor",
+        category: GeneratorConstants.DiagnosticCategory,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: ServiceRegistrationMissingCtorDescription,
+        helpLinkUri: string.Format(HelpLinkUriFormat, "module-service-registration"));
 }

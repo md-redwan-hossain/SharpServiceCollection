@@ -1,6 +1,16 @@
 <Solution>
-  <Project Path="SharpServiceCollection.Tests/SharpServiceCollection.Tests.csproj" />
-  <Project Path="src/SharpServiceCollection.SourceGenerator/SharpServiceCollection.SourceGenerator.csproj" />
-  <Project Path="src/SharpServiceCollection/SharpServiceCollection.csproj" />
-  <Project Path="TrialWebApi/TrialWebApi.csproj" />
+  <Folder Name="/src/">
+    <Project Path="src/SharpServiceCollection/SharpServiceCollection.csproj" />
+    <Project Path="src/SharpServiceCollection.SourceGenerator/SharpServiceCollection.SourceGenerator.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="SharpServiceCollection.Tests/SharpServiceCollection.Tests.csproj" />
+    <Project Path="test/ServiceRegistration.TestShared/ServiceRegistration.TestShared.csproj" />
+    <Project Path="test/ServiceRegistration.ModuleA/ServiceRegistration.ModuleA.csproj" />
+    <Project Path="test/ServiceRegistration.ModuleB/ServiceRegistration.ModuleB.csproj" />
+    <Project Path="test/ServiceRegistration.ModuleGeneric/ServiceRegistration.ModuleGeneric.csproj" />
+  </Folder>
+  <Folder Name="/samples/">
+    <Project Path="TrialWebApi/TrialWebApi.csproj" />
+  </Folder>
 </Solution>

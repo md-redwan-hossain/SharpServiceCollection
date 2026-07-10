@@ -26,6 +26,65 @@ so you can register dependencies without runtime reflection scanning:
 
 The existing reflection methods (`AddServicesFromAssembly*`) remain supported for backward compatibility.
 
+### Module Service Registration (host orchestration)
+
+For modular apps where each project owns its DI setup, mark the **host** project and let the generator wire all modules at compile time.
+
+**Host `.csproj`:**
+
+```xml
+<PropertyGroup>
+  <ServiceRegistrationRoot>true</ServiceRegistrationRoot>
+</PropertyGroup>
+```
+
+**Host `Program.cs`:**
+
+```csharp
+using SharpServiceCollection.Generated;
+
+await builder.Services.ExecuteServiceRegistrationsAsync();
+// or with app-defined context:
+await builder.Services.ExecuteServiceRegistrationsAsync(context);
+```
+
+**Module project** — sealed class named `ServiceRegistration` (enforced by diagnostics SSC005–SSC007):
+
+```csharp
+using SharpServiceCollection;
+
+public sealed class ServiceRegistration : ServiceRegistrationBase
+{
+    public override int Priority => 100;
+
+    public override Task ExecuteAsync(IServiceCollection services)
+    {
+        services.AddAttributedServices();
+        return Task.CompletedTask;
+    }
+}
+```
+
+When a module needs extra data (config, environment, etc.), use the generic base — `T` is required:
+
+```csharp
+public sealed class ServiceRegistration : ServiceRegistrationBase<AppContext>
+{
+    public override Task ExecuteAsync(IServiceCollection services, AppContext context)
+    {
+        services.AddAttributedServices();
+        return Task.CompletedTask;
+    }
+}
+```
+
+| Host call | Modules invoked |
+|-----------|-----------------|
+| `ExecuteServiceRegistrationsAsync()` | `ServiceRegistrationBase` only |
+| `ExecuteServiceRegistrationsAsync(ctx)` | `ServiceRegistrationBase<T>` where `T` matches `ctx` |
+
+Modules are discovered from **referenced assemblies**, sorted by `Priority` descending. Add a project reference to the host and rebuild to pick up a new module.
+
 ### Reflection based Registration (No compile-time code generation, runtime assembly scanning)
 
 Use one of the extension methods on `IServiceCollection`:

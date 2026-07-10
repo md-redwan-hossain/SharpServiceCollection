@@ -9,8 +9,11 @@
               Pack="true"
               Visible="false"
               PackagePath="analyzers/dotnet/cs"/>
+        <None Include="buildTransitive\SharpServiceCollection.props"
+              Pack="true"
+              PackagePath="buildTransitive\"/>
     </ItemGroup>
-    
+
     <ItemGroup>
         <ProjectReference Include="..\SharpServiceCollection.SourceGenerator\SharpServiceCollection.SourceGenerator.csproj"
                           PrivateAssets="all"
