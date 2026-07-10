@@ -45,7 +45,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
             return null;
         }
 
-        if (ModelExtensions.GetDeclaredSymbol(ctx.SemanticModel, classDeclaration) is not INamedTypeSymbol symbol)
+        if (ctx.SemanticModel.GetDeclaredSymbol(classDeclaration) is not INamedTypeSymbol symbol)
         {
             return null;
         }
@@ -90,8 +90,8 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
             return;
         }
 
-        var modules = CollectModulesFromReferencedAssemblies(compilation);
-        var generatedSource = BuildSource(modules);
+        var items = CollectItemsFromReferencedAssemblies(compilation);
+        var generatedSource = BuildSource(items);
         context.AddSource(ServiceRegistration.GeneratedFileName, SourceText.From(generatedSource, Encoding.UTF8));
     }
 
@@ -129,8 +129,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
                 typeSymbol.ToDisplayString()));
         }
 
-        if (typeSymbol.Name == ClassName
-            && typeSymbol.IsSealed
+        if (typeSymbol is { Name: ClassName, IsSealed: true }
             && !HasAccessibleParameterlessConstructor(typeSymbol))
         {
             diagnostics.Add(Diagnostic.Create(
@@ -174,8 +173,8 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         return false;
     }
 
-    // Used when the module lives in a referenced assembly and the generated code in the
-    // root assembly needs to call `new {Module}()` directly. Accounts for InternalsVisibleTo,
+    // Used when the item lives in a referenced assembly and the generated code in the
+    // root assembly needs to call `new {Item}()` directly. Accounts for InternalsVisibleTo,
     // unlike the simple Public-or-Internal heuristic above.
     private static bool HasConstructorAccessibleFrom(INamedTypeSymbol typeSymbol, Compilation compilation)
     {
@@ -191,7 +190,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         return false;
     }
 
-    private static IReadOnlyList<ModuleRegistrationDescriptor> CollectModulesFromReferencedAssemblies(
+    private static IReadOnlyList<ItemRegistrationDescriptor> CollectItemsFromReferencedAssemblies(
         Compilation compilation)
     {
         var nonGenericBase = compilation.GetTypeByMetadataName(BaseTypeMetadataName);
@@ -201,7 +200,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
             return [];
         }
 
-        var modules = new List<ModuleRegistrationDescriptor>();
+        var items = new List<ItemRegistrationDescriptor>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var type in EnumerateTypesInReferencedAssemblies(compilation))
@@ -214,16 +213,16 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
 
             if (seen.Add(descriptor.FullyQualifiedTypeName))
             {
-                modules.Add(descriptor);
+                items.Add(descriptor);
             }
         }
 
-        return modules
-            .OrderBy(m => m.FullyQualifiedTypeName, StringComparer.Ordinal)
+        return items
+            .OrderBy(i => i.FullyQualifiedTypeName, StringComparer.Ordinal)
             .ToList();
     }
 
-    private static ModuleRegistrationDescriptor? TryCreateDescriptor(
+    private static ItemRegistrationDescriptor? TryCreateDescriptor(
         INamedTypeSymbol type,
         INamedTypeSymbol? nonGenericBase,
         INamedTypeSymbol? genericBase,
@@ -239,10 +238,9 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
             return null;
         }
 
-        if (nonGenericBase is not null
-            && SymbolEqualityComparer.Default.Equals(type.BaseType, nonGenericBase))
+        if (nonGenericBase is not null && SymbolEqualityComparer.Default.Equals(type.BaseType, nonGenericBase))
         {
-            return new ModuleRegistrationDescriptor
+            return new ItemRegistrationDescriptor
             {
                 FullyQualifiedTypeName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                 ContextTypeName = null,
@@ -255,7 +253,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
             && SymbolEqualityComparer.Default.Equals(constructed.ConstructedFrom, genericBase)
             && constructed.TypeArguments.Length == 1)
         {
-            return new ModuleRegistrationDescriptor
+            return new ItemRegistrationDescriptor
             {
                 FullyQualifiedTypeName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                 ContextTypeName = constructed.TypeArguments[0]
@@ -342,20 +340,20 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
                || string.Equals(name, RuntimeAssemblyName, StringComparison.Ordinal);
     }
 
-    private static string BuildSource(IReadOnlyCollection<ModuleRegistrationDescriptor> modules)
+    private static string BuildSource(IReadOnlyCollection<ItemRegistrationDescriptor> items)
     {
-        var nonGeneric = new List<ModuleRegistrationDescriptor>();
-        var genericByContext = new SortedDictionary<string, List<ModuleRegistrationDescriptor>>(StringComparer.Ordinal);
+        var nonGeneric = new List<ItemRegistrationDescriptor>();
+        var genericByContext = new SortedDictionary<string, List<ItemRegistrationDescriptor>>(StringComparer.Ordinal);
 
-        foreach (var module in modules)
+        foreach (var item in items)
         {
-            if (!module.IsGeneric)
+            if (!item.IsGeneric)
             {
-                nonGeneric.Add(module);
+                nonGeneric.Add(item);
                 continue;
             }
 
-            var contextTypeName = module.ContextTypeName;
+            var contextTypeName = item.ContextTypeName;
             if (contextTypeName is null)
             {
                 continue;
@@ -367,7 +365,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
                 genericByContext[contextTypeName] = group;
             }
 
-            group.Add(module);
+            group.Add(item);
         }
 
         var methodsSource = BuildMethodsSource(nonGeneric, genericByContext);
@@ -390,8 +388,8 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
     }
 
     private static string BuildMethodsSource(
-        IReadOnlyList<ModuleRegistrationDescriptor> nonGeneric,
-        IReadOnlyDictionary<string, List<ModuleRegistrationDescriptor>> genericByContext)
+        IReadOnlyList<ItemRegistrationDescriptor> nonGeneric,
+        IReadOnlyDictionary<string, List<ItemRegistrationDescriptor>> genericByContext)
     {
         var builder = new StringBuilder();
         AppendNonGenericMethod(builder, nonGeneric);
@@ -406,14 +404,14 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
 
     private static void AppendNonGenericMethod(
         StringBuilder builder,
-        IReadOnlyList<ModuleRegistrationDescriptor> modules)
+        IReadOnlyList<ItemRegistrationDescriptor> items)
     {
         builder.AppendLine(
             $"    public static async Task<{ServiceCollectionType}> {HostMethodName}(");
         builder.AppendLine($"        this {ServiceCollectionType} services)");
         builder.AppendLine("    {");
 
-        if (modules.Count == 0)
+        if (items.Count == 0)
         {
             builder.AppendLine($"{Indent}await Task.CompletedTask;");
             builder.AppendLine($"{Indent}return services;");
@@ -422,18 +420,18 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
             return;
         }
 
-        builder.AppendLine($"{Indent}global::{BaseTypeMetadataName}[] modules =");
+        builder.AppendLine($"{Indent}global::{BaseTypeMetadataName}[] items =");
         builder.AppendLine($"{Indent}[");
-        foreach (var module in modules)
+        foreach (var item in items)
         {
-            builder.AppendLine($"{Indent}    new {module.FullyQualifiedTypeName}(),");
+            builder.AppendLine($"{Indent}    new {item.FullyQualifiedTypeName}(),");
         }
 
         builder.AppendLine($"{Indent}];");
         builder.AppendLine();
-        builder.AppendLine($"{Indent}foreach (var module in modules.OrderByDescending(m => m.Priority))");
+        builder.AppendLine($"{Indent}foreach (var item in items.OrderByDescending(i => i.Priority))");
         builder.AppendLine($"{Indent}{{");
-        builder.AppendLine($"{Indent}    await module.{ExecuteMethodName}(services);");
+        builder.AppendLine($"{Indent}    await item.{ExecuteMethodName}(services);");
         builder.AppendLine($"{Indent}}}");
         builder.AppendLine();
         builder.AppendLine($"{Indent}return services;");
@@ -444,25 +442,25 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
     private static void AppendGenericMethod(
         StringBuilder builder,
         string contextTypeName,
-        IReadOnlyList<ModuleRegistrationDescriptor> modules)
+        IReadOnlyList<ItemRegistrationDescriptor> items)
     {
         builder.AppendLine(
             $"    public static async Task<{ServiceCollectionType}> {HostMethodName}(");
         builder.AppendLine($"        this {ServiceCollectionType} services,");
         builder.AppendLine($"        {contextTypeName} context)");
         builder.AppendLine("    {");
-        builder.AppendLine($"{Indent}global::{BaseTypeMetadataName}<{contextTypeName}>[] modules =");
+        builder.AppendLine($"{Indent}global::{BaseTypeMetadataName}<{contextTypeName}>[] items =");
         builder.AppendLine($"{Indent}[");
-        foreach (var module in modules)
+        foreach (var item in items)
         {
-            builder.AppendLine($"{Indent}    new {module.FullyQualifiedTypeName}(),");
+            builder.AppendLine($"{Indent}    new {item.FullyQualifiedTypeName}(),");
         }
 
         builder.AppendLine($"{Indent}];");
         builder.AppendLine();
-        builder.AppendLine($"{Indent}foreach (var module in modules.OrderByDescending(m => m.Priority))");
+        builder.AppendLine($"{Indent}foreach (var item in items.OrderByDescending(i => i.Priority))");
         builder.AppendLine($"{Indent}{{");
-        builder.AppendLine($"{Indent}    await module.{ExecuteMethodName}(services, context);");
+        builder.AppendLine($"{Indent}    await item.{ExecuteMethodName}(services, context);");
         builder.AppendLine($"{Indent}}}");
         builder.AppendLine();
         builder.AppendLine($"{Indent}return services;");

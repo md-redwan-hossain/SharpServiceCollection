@@ -1,6 +1,6 @@
 namespace SharpServiceCollection.SourceGenerator.InternalTypes;
 
-internal sealed class ModuleRegistrationDescriptor
+internal sealed class ItemRegistrationDescriptor
 {
     public required string FullyQualifiedTypeName { get; init; }
     public required string? ContextTypeName { get; init; }

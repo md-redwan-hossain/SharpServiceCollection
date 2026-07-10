@@ -31,6 +31,7 @@ public class ServiceRegistrationApiTests
         var context = new TestRegistrationContext();
 
         await services.ExecuteServiceRegistrationsAsync(context);
+        await services.ExecuteServiceRegistrationsAsync("context");
 
         context.Calls.ShouldBe(["Generic"]);
         ExecutionLog.Snapshot().ShouldBe(["Generic"]);

@@ -82,7 +82,7 @@ internal static class GeneratorDiagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: ServiceRegistrationMustBeNamedDescription,
-        helpLinkUri: string.Format(HelpLinkUriFormat, "module-service-registration"));
+        helpLinkUri: string.Format(HelpLinkUriFormat, "service-registration"));
 
     internal static readonly DiagnosticDescriptor ServiceRegistrationMustBeSealed = new(
         id: "SSC006",
@@ -92,7 +92,7 @@ internal static class GeneratorDiagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: ServiceRegistrationMustBeSealedDescription,
-        helpLinkUri: string.Format(HelpLinkUriFormat, "module-service-registration"));
+        helpLinkUri: string.Format(HelpLinkUriFormat, "service-registration"));
 
     internal static readonly DiagnosticDescriptor ServiceRegistrationMissingParameterlessConstructor = new(
         id: "SSC007",
@@ -102,5 +102,5 @@ internal static class GeneratorDiagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: ServiceRegistrationMissingCtorDescription,
-        helpLinkUri: string.Format(HelpLinkUriFormat, "module-service-registration"));
+        helpLinkUri: string.Format(HelpLinkUriFormat, "service-registration"));
 }
