@@ -26,9 +26,9 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
         var typeResults = context.SyntaxProvider.CreateSyntaxProvider(
                 predicate: static (node, _) => node is ClassDeclarationSyntax { AttributeLists.Count: > 0 },
                 transform: static (ctx, _) => AnalyzeClass(ctx))
-            .SelectMany(static (result, _) =>
-                result is { } value ? [value] : ImmutableArray<TypeRegistrationResult>.Empty);
-        
+            .Where(static result => result.HasValue)
+            .Select(static (result, _) => result.GetValueOrDefault());
+
         var collectedResults = typeResults.Collect();
 
         var assemblyName = context.CompilationProvider
