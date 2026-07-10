@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using SharpServiceCollection.Attributes;
 using SharpServiceCollection.Enums;
 using SharpServiceCollection.Extensions;
-using SharpServiceCollection.Generated;
 using SharpServiceCollection.Tests.TestData.ConcreteTypes;
 using SharpServiceCollection.Tests.TestData.Interfaces;
 using Shouldly;
@@ -11,7 +10,7 @@ using Xunit;
 
 namespace SharpServiceCollection.Tests;
 
-public class SharpServiceCollectionTests
+public class ReflectionApiTests
 {
     [Fact]
     public void ScopedDependencyForInjectableBy()
@@ -537,73 +536,5 @@ public class SharpServiceCollectionTests
 
         attribute.Enumerable.ShouldBeFalse();
         attribute.TryAdd.ShouldBeFalse();
-    }
-
-    [Fact]
-    public void AddServicesFromSharpServiceCollectionTests_RegistersMatchingInterface()
-    {
-        var services = new ServiceCollection();
-
-        services.AddServicesFromSharpServiceCollectionTests();
-        var provider = services.BuildServiceProvider();
-
-        var service = provider.GetService<IScopedDependency>();
-        service.ShouldNotBeNull();
-        service.ShouldBeOfType<ScopedDependency>();
-    }
-
-    [Fact]
-    public void AddSourceGeneratedServices_RegistersMatchingInterface()
-    {
-        var services = new ServiceCollection();
-
-        services.AddSourceGeneratedServices();
-        var provider = services.BuildServiceProvider();
-
-        var service = provider.GetService<IScopedDependency>();
-        service.ShouldNotBeNull();
-        service.ShouldBeOfType<ScopedDependency>();
-    }
-
-    [Fact]
-    public void AddSourceGeneratedServices_RegistersKeyedServices()
-    {
-        var services = new ServiceCollection();
-
-        services.AddSourceGeneratedServices();
-        var provider = services.BuildServiceProvider();
-
-        var service = provider.GetKeyedService<IKeyedScopedDependency>("keyed");
-        service.ShouldNotBeNull();
-        service.ShouldBeOfType<KeyedScopedDependency>();
-    }
-
-    [Fact]
-    public void AddSourceGeneratedServices_RegistersEnumerableServices()
-    {
-        var services = new ServiceCollection();
-
-        services.AddSourceGeneratedServices();
-        var provider = services.BuildServiceProvider();
-
-        var plugins = provider.GetServices<IEnumerablePlugin>().ToList();
-        plugins.Count.ShouldBe(2);
-        plugins.ShouldContain(p => p is EnumerablePluginPrimary);
-        plugins.ShouldContain(p => p is EnumerablePluginSecondary);
-    }
-
-    [Fact]
-    public void AddSourceGeneratedServices_PreservesOrderSemantics()
-    {
-        var services = new ServiceCollection();
-
-        services.AddSourceGeneratedServices();
-        var provider = services.BuildServiceProvider();
-
-        var tryAddWinner = provider.GetService<IOrderTryResolver>();
-        var addWinner = provider.GetService<IOrderAddResolver>();
-
-        tryAddWinner.ShouldBeOfType<ZebraWinsTryAddResolver>();
-        addWinner.ShouldBeOfType<AlphaWinsAddResolver>();
     }
 }

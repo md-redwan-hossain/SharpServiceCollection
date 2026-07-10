@@ -10,12 +10,23 @@ from [Nuget](https://www.nuget.org/packages/SharpServiceCollection)
 ### Introduction
 
 `SharpServiceCollection` is a lightweight C# library that wraps the `IServiceCollection` interface to streamline
-dependency injection through attribute-based assembly scanning.
+dependency injection by providing a more attribute driven declarative approach.
 
-Annotate a class with `InjectableDependency` or `InjectableDependency<T>`, scan the assembly, and the library calls the
+Annotate a class with `InjectableDependency` or `InjectableDependency<T>` and the library calls the
 equivalent `Add*` / `TryAdd*` / `AddKeyed*` / `TryAddKeyed*` / `TryAddEnumerable` methods for you.
 
-### Assembly Scanning
+### Source-Generator based Registration (Compile-time and AOT-friendly)
+
+The generator emits assembly-specific registration methods based on your `InjectableDependency` attributes,
+so you can register dependencies without runtime reflection scanning:
+
+- `AddAttributedServices()` is emitted as **internal** (callable only within the same assembly).
+- Each project emits a public `AddAttributedServicesFrom{SanitisedAssemblyName}()` derived from its assembly name
+(for example, `My.Module.Application` becomes `AddAttributedServicesFromMyModuleApplication`).
+
+The existing reflection methods (`AddServicesFromAssembly*`) remain supported for backward compatibility.
+
+### Reflection based Registration (No compile-time code generation, runtime assembly scanning)
 
 Use one of the extension methods on `IServiceCollection`:
 
@@ -24,35 +35,6 @@ Use one of the extension methods on `IServiceCollection`:
 - `AddServicesFromAssemblyContaining<T>()`
 - `AddServicesFromAssemblyContaining(Type type)`
 
-### Source-Generated Registration (AOT-friendly)
-
-`SharpServiceCollection` ships the source generator inside the main NuGet package. Install only:
-
-```bash
-dotnet add package SharpServiceCollection
-```
-
-The generator emits assembly-specific registration methods based on your `InjectableDependency` attributes,
-so you can register dependencies without runtime reflection scanning:
-
-```csharp
-using SharpServiceCollection.Generated;
-
-var builder = WebApplication.CreateBuilder(args);
-
-// Same-assembly convenience alias (internal — not visible to referencing projects)
-builder.Services.AddSourceGeneratedServices();
-
-// Explicit per-assembly method — use from host or other assemblies
-builder.Services.AddServicesFromMyApplication();
-```
-
-`AddSourceGeneratedServices()` is emitted as **internal** (callable only within the same assembly).
-Each project emits a public `AddServicesFrom{SanitisedAssemblyName}()` derived from its assembly name
-(for example, `My.Module.Application` becomes `AddServicesFromMyModuleApplication`).
-Call the explicit method from your host or module registration code when multiple generated assemblies are referenced.
-
-The existing reflection methods (`AddServicesFromAssembly*`) remain supported for backward compatibility.
 ### ASP.NET Core Setup
 
 ```csharp
@@ -60,6 +42,13 @@ using SharpServiceCollection.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// choose one from the 3 options below to register services:
+
+// Source-generated registration (compile-time)
+builder.Services.AddAttributedServices(); // internal access modifer
+builder.Services.AddAttributedServicesFromMyApplication(); // public access modifer
+
+// reflection based assembly scanning (runtime)
 builder.Services.AddServicesFromCurrentAssembly();
 
 var app = builder.Build();
@@ -306,7 +295,7 @@ public class PluginA : IPlugin { }
 When multiple classes register the same service type, implementations are processed in **`Order` ascending**, then by
 class name ascending. For example, with default `Order = 0`, `Foo`, `Bar`, `Baz` are processed as `Bar`, `Baz`, `Foo`.
 
-- `TryAdd = true` (default) — first processed wins (lowest `Order`; tie → earliest class name)
+- `TryAdd = true` (default) — first processed wins (lowest `Order`; tie → the earliest class name)
 - `TryAdd = false` — last processed wins (highest `Order`; tie → latest class name)
 
 Use `Order` to control which implementation wins without renaming classes:

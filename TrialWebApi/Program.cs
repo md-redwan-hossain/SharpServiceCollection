@@ -4,7 +4,7 @@ using TrialWebApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSourceGeneratedServices();
+builder.Services.AddAttributedServices();
 
 var app = builder.Build();
 

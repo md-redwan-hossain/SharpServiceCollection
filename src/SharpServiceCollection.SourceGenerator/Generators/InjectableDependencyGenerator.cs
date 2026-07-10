@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Text;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 using SharpServiceCollection.SourceGenerator.InternalTypes;
@@ -16,65 +17,94 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
     private const string TypeOfPrefix = "typeof(";
     private const string TypeOfSuffix = ")";
 
+    private readonly record struct TypeRegistrationResult(
+        ImmutableArray<ServiceRegistrationDescriptor> Descriptors,
+        ImmutableArray<Diagnostic> Diagnostics);
+
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var sym = context.SyntaxProvider.CreateSyntaxProvider(
-            predicate: static (node, _) => node is ClassDeclarationSyntax { AttributeLists.Count: > 0 },
-            transform: static (ctx, _) =>
-            {
-                if (ctx.Node is not ClassDeclarationSyntax classDeclaration)
-                {
-                    return null;
-                }
+        var typeResults = context.SyntaxProvider.CreateSyntaxProvider(
+                predicate: static (node, _) => node is ClassDeclarationSyntax { AttributeLists.Count: > 0 },
+                transform: static (ctx, _) => AnalyzeClass(ctx))
+            .SelectMany(static (result, _) =>
+                result is { } value ? [value] : ImmutableArray<TypeRegistrationResult>.Empty);
+        
+        var collectedResults = typeResults.Collect();
 
-                return ctx.SemanticModel.GetDeclaredSymbol(classDeclaration) as INamedTypeSymbol;
-            });
+        var assemblyName = context.CompilationProvider
+            .Select(static (compilation, _) => compilation.AssemblyName);
 
-        var classDeclarations = sym.SelectMany(static (symbol, _) =>
-            symbol is null ? [] : ImmutableArray.Create(symbol));
+        var combined = collectedResults.Combine(assemblyName);
 
-        var compilationAndTypes = context.CompilationProvider.Combine(classDeclarations.Collect());
-
-        context.RegisterSourceOutput(compilationAndTypes,
+        context.RegisterSourceOutput(combined,
             static (spc, source) => EmitGeneratedCode(spc, source.Left, source.Right));
     }
 
-    private static void EmitGeneratedCode(
-        SourceProductionContext context,
-        Compilation compilation,
-        ImmutableArray<INamedTypeSymbol> types)
+    private static TypeRegistrationResult? AnalyzeClass(GeneratorSyntaxContext ctx)
     {
-        if (string.Equals(compilation.AssemblyName, RuntimeAssemblyName, StringComparison.Ordinal))
+        if (ctx.Node is not ClassDeclarationSyntax classDeclaration)
         {
-            return;
+            return null;
+        }
+
+        if (ModelExtensions.GetDeclaredSymbol(ctx.SemanticModel, classDeclaration) is not INamedTypeSymbol symbol)
+        {
+            return null;
         }
 
         var registrations = new List<RegistrationModel>();
         var diagnostics = new List<Diagnostic>();
-        var processed = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+        CollectRegistrations(symbol, registrations, diagnostics);
 
-        foreach (var type in types)
+        var descriptors = ExpandRegistrations(registrations, diagnostics);
+
+        if (descriptors.Count == 0 && diagnostics.Count == 0)
         {
-            if (!processed.Add(type))
+            return null;
+        }
+
+        return new TypeRegistrationResult([..descriptors], [..diagnostics]);
+    }
+
+    private static void EmitGeneratedCode(
+        SourceProductionContext context,
+        ImmutableArray<TypeRegistrationResult> results,
+        string? assemblyName)
+    {
+        if (string.Equals(assemblyName, RuntimeAssemblyName, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var descriptors = new List<ServiceRegistrationDescriptor>();
+        var seen = new HashSet<(string ServiceTypeName, string ImplementationTypeName, string Key,
+            RegistrationLifetime Lifetime, bool TryAdd, bool Enumerable)>();
+
+        foreach (var result in results)
+        {
+            foreach (var diagnostic in result.Diagnostics)
             {
-                continue;
+                context.ReportDiagnostic(diagnostic);
             }
 
-            CollectRegistrations(type, registrations, diagnostics);
+            foreach (var descriptor in result.Descriptors)
+            {
+                var key = (descriptor.ServiceTypeName, descriptor.ImplementationTypeName, descriptor.Key,
+                    descriptor.Lifetime, descriptor.TryAdd, descriptor.Enumerable);
+
+                if (seen.Add(key))
+                {
+                    descriptors.Add(descriptor);
+                }
+            }
         }
 
-        var expanded = ExpandRegistrations(registrations, diagnostics);
-        foreach (var diagnostic in diagnostics)
-        {
-            context.ReportDiagnostic(diagnostic);
-        }
-
-        var sorted = expanded
+        var sorted = descriptors
             .OrderBy(r => r.Order)
             .ThenBy(r => r.ImplementationNameSortKey, StringComparer.Ordinal)
             .ToList();
 
-        var generatedSource = BuildSource(sorted, compilation.AssemblyName);
+        var generatedSource = BuildSource(sorted, assemblyName);
         context.AddSource(GeneratedFileName, SourceText.From(generatedSource, Encoding.UTF8));
     }
 
@@ -144,6 +174,10 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
 
         if (!TryParseResolveBy(attribute.ConstructorArguments[1], out var resolveBy))
         {
+            diagnostics.Add(Diagnostic.Create(
+                GeneratorDiagnostics.InvalidResolveBy,
+                attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation(),
+                implementationType.ToDisplayString()));
             return null;
         }
 
@@ -381,42 +415,45 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
         };
     }
 
-    private static string BuildSource(IReadOnlyCollection<ServiceRegistrationDescriptor> registrations, string? assemblyName)
+    private static string BuildSource(IReadOnlyCollection<ServiceRegistrationDescriptor> registrations,
+        string? assemblyName)
     {
         var sanitisedAssemblyName = AssemblyNameSanitizer.Sanitize(assemblyName);
         var assemblySpecificMethodName = $"{GeneratedCode.AddServicesMethodNamePrefix}{sanitisedAssemblyName}";
+        var registrationsSource = BuildRegistrationsSource(registrations);
 
+        return $$"""
+                 // <auto-generated />
+                 using Microsoft.Extensions.DependencyInjection;
+                 using Microsoft.Extensions.DependencyInjection.Extensions;
+
+                 namespace {{GeneratedCode.Namespace}};
+
+                 public static class {{GeneratedCode.ExtensionsClassName}}
+                 {
+                     internal static {{ServiceCollectionType}} {{GeneratedCode.AddServicesMethodName}}(
+                         this {{ServiceCollectionType}} services)
+                         => services.{{assemblySpecificMethodName}}();
+
+                     public static {{ServiceCollectionType}} {{assemblySpecificMethodName}}(
+                         this {{ServiceCollectionType}} services)
+                     {
+                 {{registrationsSource}}
+                 {{Indent}}return services;
+                     }
+                 }
+
+                 """;
+    }
+
+    private static string BuildRegistrationsSource(IReadOnlyCollection<ServiceRegistrationDescriptor> registrations)
+    {
         var builder = new StringBuilder();
-        builder.Append($$"""
-                         // <auto-generated />
-                         using Microsoft.Extensions.DependencyInjection;
-                         using Microsoft.Extensions.DependencyInjection.Extensions;
-
-                         namespace {{GeneratedCode.Namespace}};
-
-                         public static class {{GeneratedCode.ExtensionsClassName}}
-                         {
-                             internal static {{ServiceCollectionType}} {{GeneratedCode.AddServicesMethodName}}(
-                                 this {{ServiceCollectionType}} services)
-                                 => services.{{assemblySpecificMethodName}}();
-
-                             public static {{ServiceCollectionType}} {{assemblySpecificMethodName}}(
-                                 this {{ServiceCollectionType}} services)
-                             {
-                         """);
-        builder.AppendLine();
-
         foreach (var registration in registrations)
         {
             AppendRegistration(builder, registration);
         }
 
-        builder.Append($$"""
-                         {{Indent}}return services;
-                             }
-                         }
-                         """);
-        builder.AppendLine();
         return builder.ToString();
     }
 
@@ -428,46 +465,33 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
             return;
         }
 
+        var serviceType = TypeOfExpression(registration.ServiceTypeName);
+        var implType = TypeOfExpression(registration.ImplementationTypeName);
+
         if (registration is { TryAdd: true, Enumerable: true })
         {
             var lifetimeName = ToServiceLifetimeName(registration.Lifetime);
-            builder.Append(
-                $"{Indent}services.{TryAddEnumerableMethod}({ServiceDescriptorType}.{DescribeMethod}(");
-            AppendTypeOf(builder, registration.ServiceTypeName);
-            builder.Append(", ");
-            AppendTypeOf(builder, registration.ImplementationTypeName);
-            builder.Append($", {ServiceLifetimeType}.");
-            builder.Append(lifetimeName);
-            builder.AppendLine("));");
+            builder.AppendLine(
+                $"{Indent}services.{TryAddEnumerableMethod}({ServiceDescriptorType}.{DescribeMethod}({serviceType}, {implType}, {ServiceLifetimeType}.{lifetimeName}));");
             return;
         }
 
         var methodName = GetNonKeyedMethodName(registration.Lifetime, registration.TryAdd);
-        builder.Append($"{Indent}services.{methodName}(");
-        AppendTypeOf(builder, registration.ServiceTypeName);
-        builder.Append(", ");
-        AppendTypeOf(builder, registration.ImplementationTypeName);
-        builder.AppendLine(");");
+        builder.AppendLine($"{Indent}services.{methodName}({serviceType}, {implType});");
     }
 
     private static void AppendKeyedRegistration(StringBuilder builder, ServiceRegistrationDescriptor registration)
     {
-        var keyLiteral = registration.Key.Replace("\\", "\\\\").Replace("\"", "\\\"");
+        var keyLiteral = SymbolDisplay.FormatLiteral(registration.Key, quote: true);
         var methodName = GetKeyedMethodName(registration.Lifetime, registration.TryAdd);
+        var serviceType = TypeOfExpression(registration.ServiceTypeName);
+        var implType = TypeOfExpression(registration.ImplementationTypeName);
 
-        builder.Append($"{Indent}services.{methodName}(");
-        AppendTypeOf(builder, registration.ServiceTypeName);
-        builder.Append($", \"{keyLiteral}\", ");
-        AppendTypeOf(builder, registration.ImplementationTypeName);
-        builder.AppendLine(");");
+        builder.AppendLine($"{Indent}services.{methodName}({serviceType}, {keyLiteral}, {implType});");
     }
 
-    private static void AppendTypeOf(StringBuilder builder, string typeName)
-    {
-        builder.Append(TypeOfPrefix);
-        builder.Append(typeName);
-        builder.Append(TypeOfSuffix);
-    }
+    private static string TypeOfExpression(string typeName)
+        => $"{TypeOfPrefix}{typeName}{TypeOfSuffix}";
 
     private static string GetNonKeyedMethodName(RegistrationLifetime lifetime, bool tryAdd)
     {
