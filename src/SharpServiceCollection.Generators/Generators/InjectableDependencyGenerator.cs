@@ -6,6 +6,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 using SharpServiceCollection.Constants;
 using SharpServiceCollection.Enums;
+using SharpServiceCollection.Helpers;
 using SharpServiceCollection.InternalTypes;
 
 namespace SharpServiceCollection.Generators;
@@ -160,11 +161,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
         }
     }
 
-    private readonly record struct TypeRegistrationResult
-    {
-        public required ImmutableArray<ServiceRegistrationDescriptor> Descriptors { get; init; }
-        public required ImmutableArray<Diagnostic> Diagnostics { get; init; }
-    }
+
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {

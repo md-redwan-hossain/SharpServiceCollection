@@ -5,6 +5,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using SharpServiceCollection.Attributes;
 using SharpServiceCollection.Constants;
 using SharpServiceCollection.Interfaces;
+using SharpServiceCollection.InternalTypes;
 
 namespace SharpServiceCollection.Generators;
 
@@ -72,37 +73,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         description: ServiceRegistrationMustImplementInterfaceDescription,
         helpLinkUri: string.Format(SharedConsts.HelpLinkUriFormat, "service-registration"));
 
-    private readonly record struct RegistrationDescriptor
-    {
-        public required string ImplementationTypeName { get; init; }
-        public required ITypeSymbol? ContextType { get; init; }
-        public required string? ContextTypeName { get; init; }
-        public required uint Order { get; init; }
-    }
 
-    private readonly record struct RegistrationAnalysis
-    {
-        public required ImmutableArray<RegistrationDescriptor> Descriptors { get; init; }
-        public required ImmutableArray<Diagnostic> Diagnostics { get; init; }
-
-        public bool HasDescriptors => !Descriptors.IsDefaultOrEmpty;
-    }
-
-    private readonly record struct AggregatorMethod
-    {
-        public required string AggregatorTypeName { get; init; }
-        public required string MethodName { get; init; }
-        public required string? ContextTypeName { get; init; }
-        public required uint Order { get; init; }
-        public required string SortKey { get; init; }
-    }
-
-    private readonly record struct RootRegistrationCall
-    {
-        public required string Call { get; init; }
-        public required uint Order { get; init; }
-        public required string SortKey { get; init; }
-    }
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
