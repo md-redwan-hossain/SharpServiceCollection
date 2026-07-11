@@ -1,6 +1,6 @@
 ﻿using SharpServiceCollection.Enums;
 
-namespace SharpServiceCollection.Interfaces;
+namespace SharpServiceCollection.Interfaces.Internal;
 
 internal interface IServiceLifetime
 {

@@ -1,6 +1,6 @@
-namespace SharpServiceCollection.Generators.InternalTypes;
+namespace SharpServiceCollection.Generators.Constants;
 
-internal static class GeneratorConstants
+internal static class InjectableDependencyConstants
 {
     internal const string RuntimeAssemblyName = "SharpServiceCollection";
     internal const string GeneratedFileName = "SharpServiceCollection.Generated.g.cs";
@@ -34,9 +34,8 @@ internal static class GeneratorConstants
         internal const string Name = "InjectableDependencyAttribute";
         internal const string ServiceRegistrationName = "ServiceRegistrationAttribute";
         internal const string Namespace = "SharpServiceCollection.Attributes";
-        internal const string ServiceRegistrationMetadataName = Namespace + "." + ServiceRegistrationName;
-        internal const string ServiceRegistrationGenericMetadataName = Namespace + "." + ServiceRegistrationName + "`1";
-        internal const string ServiceRegistrationRootMetadataName = Namespace + "." + "ServiceRegistrationRootAttribute";
+        internal const string ServiceRegistrationMetadataName = $"{Namespace}.{ServiceRegistrationName}";
+        internal const string ServiceRegistrationGenericMetadataName = $"{Namespace}.{ServiceRegistrationName}`1";
     }
 
     internal static class AttributeProperties
@@ -54,15 +53,7 @@ internal static class GeneratorConstants
         internal const string AddServicesMethodName = "AddAttributedServices";
         internal const string AddServicesMethodNamePrefix = "AddAttributedServicesFrom";
     }
-
-    internal static class ServiceRegistration
-    {
-        internal const string ExecuteMethodName = "ExecuteAsync";
-        internal const string HostMethodName = "ExecuteServiceRegistrationsAsync";
-        internal const string GeneratedFileName = "SharpServiceCollection.ServiceRegistration.g.cs";
-        internal const string ExtensionsClassName = "GeneratedServiceRegistrationExtensions";
-    }
-
+    
     internal static class DependencyInjection
     {
         internal const string ServiceCollectionType =
@@ -79,32 +70,43 @@ internal static class GeneratorConstants
 
         internal static class MethodPrefixes
         {
-            internal const string TryAdd = "TryAdd";
-            internal const string Add = "Add";
-            internal const string Keyed = "Keyed";
+            internal const string TryAdd = nameof(TryAdd);
+            internal const string Add = nameof(Add);
+            internal const string Keyed = nameof(Keyed);
         }
 
         internal static class Lifetimes
         {
-            internal const string Singleton = "Singleton";
-            internal const string Scoped = "Scoped";
-            internal const string Transient = "Transient";
+            internal const string Singleton = nameof(Singleton);
+            internal const string Scoped = nameof(Scoped);
+            internal const string Transient = nameof(Transient);
         }
 
         internal static class Methods
         {
-            internal const string TryAddSingleton = MethodPrefixes.TryAdd + Lifetimes.Singleton;
-            internal const string TryAddScoped = MethodPrefixes.TryAdd + Lifetimes.Scoped;
-            internal const string TryAddTransient = MethodPrefixes.TryAdd + Lifetimes.Transient;
-            internal const string AddSingleton = MethodPrefixes.Add + Lifetimes.Singleton;
-            internal const string AddScoped = MethodPrefixes.Add + Lifetimes.Scoped;
-            internal const string AddTransient = MethodPrefixes.Add + Lifetimes.Transient;
-            internal const string TryAddKeyedSingleton = MethodPrefixes.TryAdd + MethodPrefixes.Keyed + Lifetimes.Singleton;
-            internal const string TryAddKeyedScoped = MethodPrefixes.TryAdd + MethodPrefixes.Keyed + Lifetimes.Scoped;
-            internal const string TryAddKeyedTransient = MethodPrefixes.TryAdd + MethodPrefixes.Keyed + Lifetimes.Transient;
-            internal const string AddKeyedSingleton = MethodPrefixes.Add + MethodPrefixes.Keyed + Lifetimes.Singleton;
-            internal const string AddKeyedScoped = MethodPrefixes.Add + MethodPrefixes.Keyed + Lifetimes.Scoped;
-            internal const string AddKeyedTransient = MethodPrefixes.Add + MethodPrefixes.Keyed + Lifetimes.Transient;
+            internal const string TryAddSingleton = $"{MethodPrefixes.TryAdd}{Lifetimes.Singleton}";
+            internal const string TryAddScoped = $"{MethodPrefixes.TryAdd}{Lifetimes.Scoped}";
+            internal const string TryAddTransient = $"{MethodPrefixes.TryAdd}{Lifetimes.Transient}";
+            internal const string AddSingleton = $"{MethodPrefixes.Add}{Lifetimes.Singleton}";
+            internal const string AddScoped = $"{MethodPrefixes.Add}{Lifetimes.Scoped}";
+            internal const string AddTransient = $"{MethodPrefixes.Add}{Lifetimes.Transient}";
+
+            internal const string TryAddKeyedSingleton =
+                $"{MethodPrefixes.TryAdd}{MethodPrefixes.Keyed}{Lifetimes.Singleton}";
+
+            internal const string TryAddKeyedScoped =
+                $"{MethodPrefixes.TryAdd}{MethodPrefixes.Keyed}{Lifetimes.Scoped}";
+
+            internal const string TryAddKeyedTransient =
+                $"{MethodPrefixes.TryAdd}{MethodPrefixes.Keyed}{Lifetimes.Transient}";
+
+            internal const string AddKeyedSingleton =
+                $"{MethodPrefixes.Add}{MethodPrefixes.Keyed}{Lifetimes.Singleton}";
+
+            internal const string AddKeyedScoped = $"{MethodPrefixes.Add}{MethodPrefixes.Keyed}{Lifetimes.Scoped}";
+
+            internal const string AddKeyedTransient =
+                $"{MethodPrefixes.Add}{MethodPrefixes.Keyed}{Lifetimes.Transient}";
         }
     }
 }

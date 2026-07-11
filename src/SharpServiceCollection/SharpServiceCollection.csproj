@@ -1,10 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <ItemGroup>
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
-    </ItemGroup>
+
     
     <ItemGroup>
+        <ProjectReference Include="..\SharpServiceCollection.Dependencies\SharpServiceCollection.Dependencies.csproj" />
         <ProjectReference Include="..\SharpServiceCollection.Generators\SharpServiceCollection.Generators.csproj" />
     </ItemGroup>
 

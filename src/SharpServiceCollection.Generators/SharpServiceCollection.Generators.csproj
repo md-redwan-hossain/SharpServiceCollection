@@ -9,7 +9,7 @@
         <IsRoslynComponent>true</IsRoslynComponent>
         <IncludeBuildOutput>false</IncludeBuildOutput>
         <IsPackable>true</IsPackable>
-        <NoWarn>CS1591</NoWarn>
+        
     </PropertyGroup>
 
     <ItemGroup>
@@ -25,6 +25,10 @@
     <ItemGroup>
         <AdditionalFiles Include="AnalyzerReleases.Shipped.md"/>
         <AdditionalFiles Include="AnalyzerReleases.Unshipped.md"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\SharpServiceCollection.Dependencies\SharpServiceCollection.Dependencies.csproj" />
     </ItemGroup>
 
 </Project>

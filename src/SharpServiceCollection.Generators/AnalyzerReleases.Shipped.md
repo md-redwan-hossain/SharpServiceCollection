@@ -12,6 +12,5 @@
  SSC003  | SharpServiceCollection.Generators | Error    | InjectableDependency lifetime must be Singleton, Scoped, or Transient 
  SSC004  | SharpServiceCollection.Generators | Error    | InjectableDependency resolve strategy is not supported                 
  SSC006  | SharpServiceCollection.Generators | Error    | ServiceRegistrationBase subclass must be sealed                       
- SSC007  | SharpServiceCollection.Generators | Error    | ServiceRegistration requires an accessible parameterless constructor  
- SSC008  | SharpServiceCollection.Generators | Error    | Service registration type must implement ExecuteAsync 
+ SSC007  | SharpServiceCollection.Generators | Error    | ServiceRegistration requires an accessible parameterless constructor   
 

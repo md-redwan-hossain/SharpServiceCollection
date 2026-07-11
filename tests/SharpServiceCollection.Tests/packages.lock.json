@@ -218,12 +218,21 @@
       "sharpservicecollection": {
         "type": "Project",
         "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.9, )",
+          "SharpServiceCollection.Dependencies": "[1.0.0, )",
           "SharpServiceCollection.Generators": "[1.0.0, )"
         }
       },
+      "sharpservicecollection.dependencies": {
+        "type": "Project",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.9, )"
+        }
+      },
       "sharpservicecollection.generators": {
-        "type": "Project"
+        "type": "Project",
+        "dependencies": {
+          "SharpServiceCollection.Dependencies": "[1.0.0, )"
+        }
       },
       "Microsoft.Extensions.DependencyInjection.Abstractions": {
         "type": "CentralTransitive",

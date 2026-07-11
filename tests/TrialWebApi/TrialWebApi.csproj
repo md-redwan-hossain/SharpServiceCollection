@@ -5,13 +5,14 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <ServiceRegistrationRoot>true</ServiceRegistrationRoot>
+        <IsPackable>false</IsPackable>
     </PropertyGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\SharpServiceCollection\SharpServiceCollection.csproj"/>
-        <ProjectReference Include="..\..\src\SharpServiceCollection.Generators\SharpServiceCollection.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-        <ProjectReference Include="..\ServiceRegistration.ModuleA\ServiceRegistration.ModuleA.csproj" />
-        <ProjectReference Include="..\ServiceRegistration.ModuleB\ServiceRegistration.ModuleB.csproj" />
+        <ProjectReference Include="..\..\src\SharpServiceCollection.Generators\SharpServiceCollection.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
+        <ProjectReference Include="..\ServiceRegistration.ModuleA\ServiceRegistration.ModuleA.csproj"/>
+        <ProjectReference Include="..\ServiceRegistration.ModuleB\ServiceRegistration.ModuleB.csproj"/>
     </ItemGroup>
 
 </Project>

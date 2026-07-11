@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/SharpServiceCollection.Dependencies/SharpServiceCollection.Dependencies.csproj" />
     <Project Path="src/SharpServiceCollection.Generators/SharpServiceCollection.Generators.csproj" />
     <Project Path="src/SharpServiceCollection/SharpServiceCollection.csproj" />
   </Folder>

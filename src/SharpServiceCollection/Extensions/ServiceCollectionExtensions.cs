@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using SharpServiceCollection.Attributes;
 using SharpServiceCollection.Enums;
-using SharpServiceCollection.Interfaces;
+using SharpServiceCollection.Interfaces.Internal;
 
 namespace SharpServiceCollection.Extensions;
 

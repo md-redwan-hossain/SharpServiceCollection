@@ -5,11 +5,11 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 using SharpServiceCollection.Generators.InternalTypes;
-using static SharpServiceCollection.Generators.InternalTypes.GeneratorConstants;
-using static SharpServiceCollection.Generators.InternalTypes.GeneratorConstants.DependencyInjection;
-using static SharpServiceCollection.Generators.InternalTypes.GeneratorConstants.TrackingNames;
+using static SharpServiceCollection.Generators.Constants.InjectableDependencyConstants;
+using static SharpServiceCollection.Generators.Constants.InjectableDependencyConstants.DependencyInjection;
+using static SharpServiceCollection.Generators.Constants.InjectableDependencyConstants.TrackingNames;
 
-namespace SharpServiceCollection.Generators.Generators;
+namespace SharpServiceCollection.Generators;
 
 // Optimised following Andrew Lock's "Creating a Source Generator - Part 9":
 // https://andrewlock.net/creating-a-source-generator-part-9-avoiding-performance-pitfalls-in-incremental-generators/

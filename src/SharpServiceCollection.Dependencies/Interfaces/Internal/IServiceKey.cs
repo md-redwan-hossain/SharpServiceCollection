@@ -1,4 +1,4 @@
-﻿namespace SharpServiceCollection.Interfaces;
+﻿namespace SharpServiceCollection.Interfaces.Internal;
 
 internal interface IServiceKey
 {

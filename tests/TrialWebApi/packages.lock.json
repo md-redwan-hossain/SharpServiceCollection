@@ -17,11 +17,18 @@
       "sharpservicecollection": {
         "type": "Project",
         "dependencies": {
+          "SharpServiceCollection.Dependencies": "[1.0.0, )",
           "SharpServiceCollection.Generators": "[1.0.0, )"
         }
       },
-      "sharpservicecollection.generators": {
+      "sharpservicecollection.dependencies": {
         "type": "Project"
+      },
+      "sharpservicecollection.generators": {
+        "type": "Project",
+        "dependencies": {
+          "SharpServiceCollection.Dependencies": "[1.0.0, )"
+        }
       }
     }
   }

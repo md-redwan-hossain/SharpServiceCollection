@@ -1,12 +1,13 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using SharpServiceCollection.Attributes;
+using SharpServiceCollection.Interfaces;
 
 namespace ServiceRegistration.ModuleA;
 
-[ServiceRegistration<string>(Order = 10)]
-public sealed class ModuleAServiceRegistration
+[ServiceRegistrationItem(Order = 10)]
+public class ModuleAServiceRegistration
 {
-    public Task ExecuteAsync(IServiceCollection services, string context)
+    public Task RegisterAsync(IServiceCollection services, string context)
     {
         return Task.CompletedTask;
     }
