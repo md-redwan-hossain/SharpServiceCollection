@@ -41,8 +41,7 @@ public class ServiceRegistrationGenerator : IIncrementalGenerator
         helpLinkUri: string.Format(SharedConsts.HelpLinkUriFormat, "service-registration"));
 
 
-    private const string NonGenericInterfaceName = nameof(IServiceRegistration);
-    private const string GenericInterfaceName = $"{nameof(IServiceRegistration)}`1";
+    private const string InterfaceName = nameof(IServiceRegistration);
     private const string GeneratedFileName = "SharpServiceCollection.ServiceRegistration.g.cs";
     private const string InterfaceNamespace = "SharpServiceCollection.Interfaces";
     private const string AttributeNamespace = "SharpServiceCollection.Attributes";
@@ -60,16 +59,14 @@ public class ServiceRegistrationGenerator : IIncrementalGenerator
                 transform: static (ctx, _) => GetValidClassSymbol(ctx))
             .Where(static symbol => symbol is not null);
 
-        var classesWithCompilation = candidateClasses
-            .Combine(context.CompilationProvider);
-
-        context.RegisterSourceOutput(classesWithCompilation, static (spc, tuple) =>
+        context.RegisterSourceOutput(candidateClasses.Collect(), static (spc, classes) =>
         {
-            var (classSymbol, compilation) = tuple;
-
-            if (classSymbol is not null)
+            foreach (var classSymbol in classes)
             {
-                ValidateServiceRegistrationClass(spc, classSymbol, compilation);
+                if (classSymbol is not null)
+                {
+                    ValidateServiceRegistrationClass(spc, classSymbol);
+                }
             }
         });
     }
@@ -84,32 +81,34 @@ public class ServiceRegistrationGenerator : IIncrementalGenerator
         return namedType.TypeKind != TypeKind.Class ? null : namedType;
     }
 
-    private static void ValidateServiceRegistrationClass(
-        SourceProductionContext spc,
-        INamedTypeSymbol classSymbol,
-        Compilation compilation)
+    private static void ValidateServiceRegistrationClass(SourceProductionContext spc, INamedTypeSymbol classSymbol)
     {
         var location = classSymbol.Locations.FirstOrDefault();
 
         if (!classSymbol.IsSealed)
         {
-            spc.ReportDiagnostic(Diagnostic.Create(MustBeSealed, location, classSymbol.Name));
+            spc.ReportDiagnostic(Diagnostic.Create(
+                MustBeSealed,
+                location,
+                classSymbol.Name));
         }
-        
-        var nonGeneric = compilation.GetTypeByMetadataName($"{InterfaceNamespace}.{NonGenericInterfaceName}");
-        var generic = compilation.GetTypeByMetadataName($"{InterfaceNamespace}.{GenericInterfaceName}");
 
-        var implementsNonGeneric = nonGeneric != null &&
-                                   classSymbol.AllInterfaces.Any(i =>
-                                       SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, nonGeneric));
+        var implementsNonGeneric = classSymbol.AllInterfaces
+            .Any(i => i.Name == InterfaceName
+                      && i.ContainingNamespace is not null
+                      && i.ContainingNamespace.ToDisplayString() == InterfaceNamespace);
 
-        var implementsGeneric = generic != null &&
-                                classSymbol.AllInterfaces.Any(i =>
-                                    SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, generic));
+        var implementsGeneric = classSymbol.AllInterfaces.Any(i =>
+            i.Arity == 1 &&
+            i.Name == InterfaceName &&
+            i.ContainingNamespace?.ToDisplayString() == InterfaceNamespace);
 
         if (!implementsNonGeneric && !implementsGeneric)
         {
-            spc.ReportDiagnostic(Diagnostic.Create(MustImplementInterface, location, classSymbol.Name));
+            spc.ReportDiagnostic(Diagnostic.Create(
+                MustImplementInterface,
+                location,
+                classSymbol.Name));
         }
     }
 }
