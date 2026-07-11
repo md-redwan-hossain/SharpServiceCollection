@@ -8,5 +8,15 @@
             $(DefaultItemExcludes);out/**;publish/**;bin/**;obj/**
         </DefaultItemExcludes>
     </PropertyGroup>
-    
+
+    <ItemGroup>
+        <!--
+            Source generator reads MSBuild properties via AnalyzerConfigOptionsProvider
+            (keys prefixed with `build_property.`). The buildTransitive props file wires this
+            up for NuGet consumers; for local <ProjectReference> usage we have to declare it
+            here so the generator sees ServiceRegistrationRoot=true in TrialWebApi.
+        -->
+        <CompilerVisibleProperty Include="ServiceRegistrationRoot" />
+    </ItemGroup>
+
 </Project>
