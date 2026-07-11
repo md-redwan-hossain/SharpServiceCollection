@@ -605,15 +605,14 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
             .Append("> ")
             .Append(methodName)
             .AppendLine("(");
-        builder.Append("        ").Append(ServiceCollectionType).AppendLine(" services,");
+        builder.Append("        ").Append(ServiceCollectionType).Append(" services");
 
         if (registration.ContextTypeName is not null)
         {
-            builder.Append("        ").Append(registration.ContextTypeName).AppendLine(" context)");
+            builder.Append(",\n        ").Append(registration.ContextTypeName).AppendLine(" context)");
         }
         else
         {
-            builder.Length -= 2;
             builder.AppendLine(")");
         }
 
@@ -645,18 +644,17 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         string contextTypeName,
         IReadOnlyList<RootRegistrationCall> calls)
     {
-        builder.Append("    public static async Task<")
+        builder.Append("    internal static async Task<")
             .Append(ServiceCollectionType)
             .AppendLine($"> {GeneratedMethodName}(");
-        builder.Append("        this ").Append(ServiceCollectionType).AppendLine(" services,");
+        builder.Append("        this ").Append(ServiceCollectionType).Append(" services");
 
         if (contextTypeName.Length > 0)
         {
-            builder.Append("        ").Append(contextTypeName).AppendLine(" context)");
+            builder.Append(",\n        ").Append(contextTypeName).AppendLine(" context)");
         }
         else
         {
-            builder.Length -= 2;
             builder.AppendLine(")");
         }
 
