@@ -98,7 +98,12 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
 
         // Every project emits its own small public aggregator. This makes its
         // registrations visible as metadata to a referencing root project.
-        var projectSource = context.CompilationProvider
+        // Only the assembly name is needed here, so avoid carrying the full
+        // Compilation through this output pipeline.
+        var assemblyName = context.CompilationProvider
+            .Select(static (compilation, _) => compilation.AssemblyName);
+
+        var projectSource = assemblyName
             .Combine(collectedCandidates)
             .Combine(isDisabled);
         context.RegisterSourceOutput(
@@ -112,7 +117,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
 
                 GenerateProjectAggregator(
                     spc,
-                    input.Left.Left.AssemblyName,
+                    input.Left.Left,
                     input.Left.Right);
             });
 

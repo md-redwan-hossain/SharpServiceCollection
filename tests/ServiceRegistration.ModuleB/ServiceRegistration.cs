@@ -5,9 +5,9 @@ using SharpServiceCollection.Interfaces;
 namespace ServiceRegistration.ModuleB;
 
 [ServiceRegistrationItem(Order = 20)]
-public sealed class ModuleBServiceRegistration : IServiceRegistration<int>
+public sealed class ModuleBServiceRegistration : IServiceRegistration<TimeOnly>
 {
-    public Task RegisterAsync(IServiceCollection services, int context)
+    public Task RegisterAsync(IServiceCollection services, TimeOnly context)
     {
         return Task.CompletedTask;
     }
