@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using SharpServiceCollection.Attributes;
 using SharpServiceCollection.Interfaces;
 
