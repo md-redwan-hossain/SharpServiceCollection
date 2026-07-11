@@ -12,17 +12,27 @@ namespace SharpServiceCollection.Generators;
 public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
 {
     private const string InterfaceName = nameof(IServiceRegistration);
-
     private const string AttributeName = nameof(ServiceRegistrationItemAttribute);
     private const string AttributeMetadataName = "SharpServiceCollection.Attributes." + AttributeName;
+
+    private const string AggregatorAttributeMetadataName =
+        "global::SharpServiceCollection.Attributes.ServiceRegistrationAggregatorAttribute";
+
     private const string GeneratedFileName = "SharpServiceCollection.ServiceRegistration.g.cs";
+    private const string AggregatorGeneratedFileName = "SharpServiceCollection.ServiceRegistration.Aggregator.g.cs";
     private const string OrderPropertyName = "Order";
     private const string RootPropertyName = "ServiceRegistrationRoot";
     private const string GeneratedMethodName = "ExecuteServiceRegistrationItemsAsync";
+    private const string RegisterMethodName = "RegisterAsync";
 
     private const string ServiceCollectionType =
         "global::Microsoft.Extensions.DependencyInjection.IServiceCollection";
 
+    private const string ServiceCollectionMetadataName =
+        "global::Microsoft.Extensions.DependencyInjection.IServiceCollection";
+
+    private const string GeneratedNamespace = "SharpServiceCollection.Generated";
+    private const string AggregatorNamePrefix = "ServiceRegistrationAggregator_";
 
     private const string ServiceRegistrationMustBeSealedTitle = "Annotated class is not sealed";
 
@@ -68,6 +78,11 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         public bool HasDescriptors => !Descriptors.IsDefaultOrEmpty;
     }
 
+    private readonly record struct AggregatorMethod(
+        string AggregatorTypeName,
+        string? ContextTypeName,
+        string SortKey);
+
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var analyzedCandidates = context.SyntaxProvider
@@ -76,14 +91,22 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
                 static (node, _) => node is ClassDeclarationSyntax,
                 static (ctx, _) => AnalyzeClass(ctx));
 
-        // Diagnostics are emitted per candidate. A change in one class does not
-        // force validation of every other annotated class.
         context.RegisterSourceOutput(
             analyzedCandidates,
             static (spc, analysis) => ReportDiagnostics(spc, analysis));
 
-        // Only the root project needs the aggregate source file. The analyzer
-        // config provider avoids combining the pipeline with the full Compilation.
+        var collectedCandidates = analyzedCandidates.Collect();
+
+        // Every project emits its own small public aggregator. This makes its
+        // registrations visible as metadata to a referencing root project.
+        var projectSource = context.CompilationProvider.Combine(collectedCandidates);
+        context.RegisterSourceOutput(
+            projectSource,
+            static (spc, input) => GenerateProjectAggregator(
+                spc,
+                input.Left.AssemblyName,
+                input.Right));
+
         var isRoot = context.AnalyzerConfigOptionsProvider
             .Select(static (provider, _) =>
                 provider.GlobalOptions.TryGetValue(
@@ -91,20 +114,23 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
                     out var value) &&
                 string.Equals(value, "true", StringComparison.OrdinalIgnoreCase));
 
-        var generation = analyzedCandidates
-            .Collect()
+        var rootSource = context.CompilationProvider
+            .Combine(collectedCandidates)
             .Combine(isRoot);
 
         context.RegisterSourceOutput(
-            generation,
+            rootSource,
             static (spc, input) =>
             {
-                if (!input.Right || input.Left.IsDefaultOrEmpty)
+                if (!input.Right)
                 {
                     return;
                 }
 
-                GenerateSource(spc, input.Left);
+                GenerateRootExtensions(
+                    spc,
+                    input.Left.Left,
+                    input.Left.Right);
             });
     }
 
@@ -115,12 +141,9 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
             return default;
         }
 
-        var diagnostics = ImmutableArray<Diagnostic>.Empty;
         var location = classSymbol.Locations.Length == 0
             ? null
             : classSymbol.Locations[0];
-
-        var isSealed = classSymbol.IsSealed;
         var interfaces = classSymbol.AllInterfaces;
         var hasServiceRegistration = false;
 
@@ -133,13 +156,13 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
             }
         }
 
-        if (!isSealed || !hasServiceRegistration)
+        if (!classSymbol.IsSealed || !hasServiceRegistration)
         {
-            var diagnosticBuilder = ImmutableArray.CreateBuilder<Diagnostic>(2);
+            var diagnostics = ImmutableArray.CreateBuilder<Diagnostic>(2);
 
-            if (!isSealed)
+            if (!classSymbol.IsSealed)
             {
-                diagnosticBuilder.Add(Diagnostic.Create(
+                diagnostics.Add(Diagnostic.Create(
                     MustBeSealed,
                     location,
                     classSymbol.Name));
@@ -147,21 +170,18 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
 
             if (!hasServiceRegistration)
             {
-                diagnosticBuilder.Add(Diagnostic.Create(
+                diagnostics.Add(Diagnostic.Create(
                     MustImplementInterface,
                     location,
                     classSymbol.Name));
             }
 
-            diagnostics = diagnosticBuilder.ToImmutable();
-
-            // Invalid classes are diagnosed but never emitted into generated code.
-            return new RegistrationAnalysis([], diagnostics);
+            return new RegistrationAnalysis([], diagnostics.ToImmutable());
         }
 
         var implementationTypeName = classSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var order = GetOrder(classSymbol);
-        var descriptorBuilder = ImmutableArray.CreateBuilder<RegistrationDescriptor>(2);
+        var descriptors = ImmutableArray.CreateBuilder<RegistrationDescriptor>(2);
 
         foreach (var implementedInterface in interfaces)
         {
@@ -173,21 +193,21 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
             var contextType = implementedInterface.Arity == 1
                 ? implementedInterface.TypeArguments[0]
                 : null;
+            var contextTypeName = contextType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
-            descriptorBuilder.Add(new RegistrationDescriptor(
+            descriptors.Add(new RegistrationDescriptor(
                 implementationTypeName,
                 contextType,
-                contextType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                contextTypeName,
                 order));
         }
 
-        return new RegistrationAnalysis(descriptorBuilder.ToImmutable(), diagnostics);
+        return new RegistrationAnalysis(descriptors.ToImmutable(), []);
     }
 
     private static bool IsServiceRegistrationInterface(INamedTypeSymbol interfaceSymbol)
     {
-        if (interfaceSymbol.Name != InterfaceName ||
-            interfaceSymbol.Arity is not (0 or 1))
+        if (interfaceSymbol.Name != InterfaceName || interfaceSymbol.Arity is not (0 or 1))
         {
             return false;
         }
@@ -213,17 +233,15 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
 
             foreach (var argument in attribute.NamedArguments)
             {
-                if (argument.Key != OrderPropertyName)
+                if (argument.Key == OrderPropertyName)
                 {
-                    continue;
+                    return argument.Value.Value switch
+                    {
+                        uint value => value,
+                        int value when value >= 0 => (uint)value,
+                        _ => 0
+                    };
                 }
-
-                return argument.Value.Value switch
-                {
-                    uint value => value,
-                    int value when value >= 0 => (uint)value,
-                    _ => 0
-                };
             }
 
             break;
@@ -242,52 +260,161 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         }
     }
 
-    private static void GenerateSource(
+    private static void GenerateProjectAggregator(
         SourceProductionContext context,
+        string? assemblyName,
         ImmutableArray<RegistrationAnalysis> analyses)
     {
-        var nonGeneric = new List<RegistrationDescriptor>();
-        var genericGroups = new Dictionary<ITypeSymbol, List<RegistrationDescriptor>>(
-            SymbolEqualityComparer.Default);
-
-        foreach (var analysis in analyses)
-        {
-            if (!analysis.HasDescriptors)
-            {
-                continue;
-            }
-
-            foreach (var descriptor in analysis.Descriptors)
-            {
-                if (descriptor.ContextType is null)
-                {
-                    nonGeneric.Add(descriptor);
-                    continue;
-                }
-
-                if (!genericGroups.TryGetValue(descriptor.ContextType, out var registrations))
-                {
-                    registrations = new List<RegistrationDescriptor>();
-                    genericGroups.Add(descriptor.ContextType, registrations);
-                }
-
-                registrations.Add(descriptor);
-            }
-        }
-
-        if (nonGeneric.Count == 0 && genericGroups.Count == 0)
+        var descriptors = GetDescriptors(analyses);
+        if (descriptors.Count == 0 || assemblyName is null || string.IsNullOrWhiteSpace(assemblyName))
         {
             return;
         }
 
-        nonGeneric.Sort(CompareDescriptors);
-        foreach (var registrations in genericGroups.Values)
+        var aggregatorName = AggregatorNamePrefix + SanitizeIdentifier(assemblyName);
+        var source = BuildAggregatorSource(aggregatorName, descriptors);
+        context.AddSource(AggregatorGeneratedFileName, source);
+    }
+
+    private static void GenerateRootExtensions(
+        SourceProductionContext context,
+        Compilation compilation,
+        ImmutableArray<RegistrationAnalysis> analyses)
+    {
+        var localDescriptors = GetDescriptors(analyses);
+        var referencedAggregators = FindReferencedAggregators(compilation);
+
+        if (localDescriptors.Count == 0 && referencedAggregators.Count == 0)
         {
-            registrations.Sort(CompareDescriptors);
+            return;
         }
 
-        var source = BuildSource(nonGeneric, genericGroups);
+        var source = BuildRootSource(localDescriptors, referencedAggregators);
         context.AddSource(GeneratedFileName, source);
+    }
+
+    private static List<RegistrationDescriptor> GetDescriptors(
+        ImmutableArray<RegistrationAnalysis> analyses)
+    {
+        var descriptors = new List<RegistrationDescriptor>();
+
+        foreach (var analysis in analyses)
+        {
+            if (analysis.HasDescriptors)
+            {
+                descriptors.AddRange(analysis.Descriptors);
+            }
+        }
+
+        descriptors.Sort(CompareDescriptors);
+        return descriptors;
+    }
+
+    private static List<AggregatorMethod> FindReferencedAggregators(Compilation compilation)
+    {
+        var aggregators = new List<AggregatorMethod>();
+        var visitedAssemblies = new HashSet<IAssemblySymbol>(SymbolEqualityComparer.Default);
+
+        foreach (var assembly in compilation.SourceModule.ReferencedAssemblySymbols)
+        {
+            if (visitedAssemblies.Add(assembly))
+            {
+                FindAggregatorsInNamespace(assembly.GlobalNamespace, aggregators);
+            }
+        }
+
+        aggregators.Sort(static (left, right) =>
+        {
+            var contextComparison = StringComparer.Ordinal.Compare(
+                left.ContextTypeName,
+                right.ContextTypeName);
+
+            return contextComparison != 0
+                ? contextComparison
+                : StringComparer.Ordinal.Compare(left.SortKey, right.SortKey);
+        });
+
+        return aggregators;
+    }
+
+    private static void FindAggregatorsInNamespace(
+        INamespaceSymbol namespaceSymbol,
+        List<AggregatorMethod> aggregators)
+    {
+        foreach (var type in namespaceSymbol.GetTypeMembers())
+        {
+            if (HasAggregatorAttribute(type))
+            {
+                AddAggregatorMethods(type, aggregators);
+            }
+
+            FindAggregatorsInNestedTypes(type, aggregators);
+        }
+
+        foreach (var childNamespace in namespaceSymbol.GetNamespaceMembers())
+        {
+            FindAggregatorsInNamespace(childNamespace, aggregators);
+        }
+    }
+
+    private static void FindAggregatorsInNestedTypes(
+        INamedTypeSymbol type,
+        List<AggregatorMethod> aggregators)
+    {
+        foreach (var nestedType in type.GetTypeMembers())
+        {
+            if (HasAggregatorAttribute(nestedType))
+            {
+                AddAggregatorMethods(nestedType, aggregators);
+            }
+
+            FindAggregatorsInNestedTypes(nestedType, aggregators);
+        }
+    }
+
+    private static bool HasAggregatorAttribute(INamedTypeSymbol type)
+    {
+        foreach (var attribute in type.GetAttributes())
+        {
+            if (attribute.AttributeClass?.ToDisplayString(
+                    SymbolDisplayFormat.FullyQualifiedFormat) == AggregatorAttributeMetadataName)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static void AddAggregatorMethods(
+        INamedTypeSymbol aggregator,
+        List<AggregatorMethod> methods)
+    {
+        var aggregatorTypeName = aggregator.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+        foreach (var method in aggregator.GetMembers(RegisterMethodName))
+        {
+            if (method is not IMethodSymbol
+                {
+                    IsStatic: true,
+                    DeclaredAccessibility: Accessibility.Public,
+                    Parameters.Length: 1 or 2
+                } registrationMethod ||
+                registrationMethod.Parameters[0].Type.ToDisplayString(
+                    SymbolDisplayFormat.FullyQualifiedFormat) != ServiceCollectionMetadataName)
+            {
+                continue;
+            }
+
+            var contextTypeName = registrationMethod.Parameters.Length == 2
+                ? registrationMethod.Parameters[1].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+                : null;
+
+            methods.Add(new AggregatorMethod(
+                aggregatorTypeName,
+                contextTypeName,
+                aggregatorTypeName + "." + contextTypeName));
+        }
     }
 
     private static int CompareDescriptors(
@@ -303,62 +430,142 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
                 right.ImplementationTypeName);
     }
 
-    private static string BuildSource(
-        IReadOnlyList<RegistrationDescriptor> nonGeneric,
-        IReadOnlyDictionary<ITypeSymbol, List<RegistrationDescriptor>> genericGroups)
+    private static string BuildAggregatorSource(
+        string aggregatorName,
+        IReadOnlyList<RegistrationDescriptor> descriptors)
     {
-        var builder = new StringBuilder(1024 + ((nonGeneric.Count + genericGroups.Count) * 160));
+        var builder = new StringBuilder(1024 + (descriptors.Count * 120));
 
         builder.AppendLine("// <auto-generated />");
         builder.AppendLine("#nullable enable");
         builder.AppendLine("using System.Threading.Tasks;");
         builder.AppendLine();
-        builder.AppendLine("namespace SharpServiceCollection.Generated;");
+        builder.Append("namespace ").Append(GeneratedNamespace).AppendLine(";");
+        builder.AppendLine();
+        builder.AppendLine("[global::SharpServiceCollection.Attributes.ServiceRegistrationAggregator]");
+        builder.Append("public static class ").Append(aggregatorName).AppendLine();
+        builder.AppendLine("{");
+
+        AppendAggregatorMethodGroups(builder, descriptors);
+
+        builder.AppendLine("}");
+        return builder.ToString();
+    }
+
+    private static string BuildRootSource(
+        IReadOnlyList<RegistrationDescriptor> localDescriptors,
+        IReadOnlyList<AggregatorMethod> aggregators)
+    {
+        var groups = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+
+        foreach (var descriptor in localDescriptors)
+        {
+            var contextTypeName = descriptor.ContextTypeName ?? string.Empty;
+            if (!groups.TryGetValue(contextTypeName, out var calls))
+            {
+                calls = new List<string>();
+                groups.Add(contextTypeName, calls);
+            }
+
+            var call = descriptor.ContextTypeName is null
+                ? $"        await new {descriptor.ImplementationTypeName}().RegisterAsync(services);"
+                : $"        await new {descriptor.ImplementationTypeName}().RegisterAsync(services, context);";
+            calls.Add(call);
+        }
+
+        foreach (var aggregator in aggregators)
+        {
+            var contextTypeName = aggregator.ContextTypeName ?? string.Empty;
+            if (!groups.TryGetValue(contextTypeName, out var calls))
+            {
+                calls = new List<string>();
+                groups.Add(contextTypeName, calls);
+            }
+
+            var call = aggregator.ContextTypeName is null
+                ? $"        await {aggregator.AggregatorTypeName}.RegisterAsync(services);"
+                : $"        await {aggregator.AggregatorTypeName}.RegisterAsync(services, context);";
+            calls.Add(call);
+        }
+
+        var orderedGroups = new List<KeyValuePair<string, List<string>>>(groups);
+        orderedGroups.Sort(static (left, right) => StringComparer.Ordinal.Compare(left.Key, right.Key));
+
+        var builder = new StringBuilder(1024);
+        builder.AppendLine("// <auto-generated />");
+        builder.AppendLine("#nullable enable");
+        builder.AppendLine("using System.Threading.Tasks;");
+        builder.AppendLine();
+        builder.Append("namespace ").Append(GeneratedNamespace).AppendLine(";");
         builder.AppendLine();
         builder.AppendLine("public static class GeneratedServiceRegistrationExtensions");
         builder.AppendLine("{");
 
-        AppendNonGenericMethod(builder, nonGeneric);
-
-        var orderedGroups = new List<KeyValuePair<ITypeSymbol, List<RegistrationDescriptor>>>(genericGroups);
-        orderedGroups.Sort(static (left, right) => StringComparer.Ordinal.Compare(
-            left.Value[0].ContextTypeName,
-            right.Value[0].ContextTypeName));
-
         foreach (var group in orderedGroups)
         {
-            var contextTypeName = group.Value[0].ContextTypeName;
-            if (contextTypeName is null)
-            {
-                continue;
-            }
-
-            AppendGenericMethod(builder, contextTypeName, group.Value);
+            AppendRootMethod(builder, group.Key, group.Value);
         }
 
         builder.AppendLine("}");
         return builder.ToString();
     }
 
-    private static void AppendNonGenericMethod(
+    private static void AppendAggregatorMethodGroups(
         StringBuilder builder,
+        IReadOnlyList<RegistrationDescriptor> descriptors)
+    {
+        var groups = new Dictionary<string, List<RegistrationDescriptor>>(StringComparer.Ordinal);
+
+        foreach (var descriptor in descriptors)
+        {
+            var contextTypeName = descriptor.ContextTypeName ?? string.Empty;
+            if (!groups.TryGetValue(contextTypeName, out var registrations))
+            {
+                registrations = new List<RegistrationDescriptor>();
+                groups.Add(contextTypeName, registrations);
+            }
+
+            registrations.Add(descriptor);
+        }
+
+        var orderedGroups = new List<KeyValuePair<string, List<RegistrationDescriptor>>>(groups);
+        orderedGroups.Sort(static (left, right) => StringComparer.Ordinal.Compare(left.Key, right.Key));
+
+        foreach (var group in orderedGroups)
+        {
+            var contextTypeName = group.Key.Length == 0 ? null : group.Key;
+            AppendAggregatorMethod(builder, contextTypeName, group.Value);
+        }
+    }
+
+    private static void AppendAggregatorMethod(
+        StringBuilder builder,
+        string? contextTypeName,
         IReadOnlyList<RegistrationDescriptor> registrations)
     {
         builder.Append("    public static async Task<")
             .Append(ServiceCollectionType)
-            .Append("> ")
-            .Append(GeneratedMethodName)
-            .AppendLine("(");
-        builder.Append("        this ")
-            .Append(ServiceCollectionType)
-            .AppendLine(" services)");
-        builder.AppendLine("    {");
+            .AppendLine("> RegisterAsync(");
+        builder.Append("        ").Append(ServiceCollectionType).AppendLine(" services,");
 
+        if (contextTypeName is not null)
+        {
+            builder.Append("        ").Append(contextTypeName).AppendLine(" context)");
+        }
+        else
+        {
+            builder.Length -= 2;
+            builder.AppendLine(")");
+        }
+
+        builder.AppendLine("    {");
         foreach (var registration in registrations)
         {
             builder.Append("        await new ")
                 .Append(registration.ImplementationTypeName)
-                .AppendLine("().RegisterAsync(services);");
+                .AppendLine(contextTypeName is null
+                    ? "().RegisterAsync(services);"
+                    : "().RegisterAsync(services, context);");
         }
 
         builder.AppendLine("        return services;");
@@ -366,33 +573,53 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         builder.AppendLine();
     }
 
-    private static void AppendGenericMethod(
+    private static void AppendRootMethod(
         StringBuilder builder,
         string contextTypeName,
-        IReadOnlyList<RegistrationDescriptor> registrations)
+        IReadOnlyList<string> calls)
     {
         builder.Append("    public static async Task<")
             .Append(ServiceCollectionType)
-            .Append("> ")
-            .Append(GeneratedMethodName)
-            .AppendLine("(");
-        builder.Append("        this ")
-            .Append(ServiceCollectionType)
-            .AppendLine(" services,");
-        builder.Append("        ")
-            .Append(contextTypeName)
-            .AppendLine(" context)");
-        builder.AppendLine("    {");
+            .AppendLine($"> {GeneratedMethodName}(");
+        builder.Append("        this ").Append(ServiceCollectionType).AppendLine(" services,");
 
-        foreach (var registration in registrations)
+        if (contextTypeName.Length > 0)
         {
-            builder.Append("        await new ")
-                .Append(registration.ImplementationTypeName)
-                .AppendLine("().RegisterAsync(services, context);");
+            builder.Append("        ").Append(contextTypeName).AppendLine(" context)");
+        }
+        else
+        {
+            builder.Length -= 2;
+            builder.AppendLine(")");
+        }
+
+        builder.AppendLine("    {");
+        foreach (var call in calls)
+        {
+            builder.AppendLine(call);
         }
 
         builder.AppendLine("        return services;");
         builder.AppendLine("    }");
         builder.AppendLine();
+    }
+
+    private static string SanitizeIdentifier(string value)
+    {
+        var builder = new StringBuilder(value.Length);
+
+        foreach (var character in value)
+        {
+            builder.Append(char.IsLetterOrDigit(character) || character == '_'
+                ? character
+                : '_');
+        }
+
+        if (builder.Length == 0 || char.IsDigit(builder[0]))
+        {
+            builder.Insert(0, '_');
+        }
+
+        return builder.ToString();
     }
 }
