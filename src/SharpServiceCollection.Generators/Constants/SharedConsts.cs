@@ -1,4 +1,4 @@
-﻿namespace SharpServiceCollection.Generators.Constants;
+﻿namespace SharpServiceCollection.Constants;
 
 internal static class SharedConsts
 {

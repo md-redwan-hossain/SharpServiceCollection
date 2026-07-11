@@ -484,7 +484,7 @@ public class SourceGeneratedApiTests
     {
         var services = new ServiceCollection();
 
-        services.AddAttributedServicesFromSharpServiceCollectionTests();
+        services.AddAttributedServicesFrom_SharpServiceCollectionTests();
         var provider = services.BuildServiceProvider();
 
         var service = provider.GetService<IScopedDependency>();

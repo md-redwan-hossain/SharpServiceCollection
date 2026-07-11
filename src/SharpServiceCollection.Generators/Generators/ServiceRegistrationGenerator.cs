@@ -3,7 +3,7 @@ using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using SharpServiceCollection.Attributes;
-using SharpServiceCollection.Generators.Constants;
+using SharpServiceCollection.Constants;
 using SharpServiceCollection.Interfaces;
 
 namespace SharpServiceCollection.Generators;
@@ -19,7 +19,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
     private const string InterfaceName = nameof(IServiceRegistration);
     private const string AttributeName = nameof(ServiceRegistrationItemAttribute);
     private const string AttributeMetadataName =
-        LibraryNamespaceName + "." + AttributesNamespaceName + "." + AttributeName;
+        $"{LibraryNamespaceName}.{AttributesNamespaceName}.{AttributeName}";
 
     private const string AggregatorAttributeName =
         nameof(ServiceRegistrationAggregatorAttribute);
@@ -38,7 +38,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         "global::Microsoft.Extensions.DependencyInjection.IServiceCollection";
 
     private const string GeneratedNamespace =
-        LibraryNamespaceName + "." + GeneratedSubnamespaceName;
+        $"{LibraryNamespaceName}.{GeneratedSubnamespaceName}";
     private const string AggregatorNamePrefix = "ServiceRegistrationAggregator_";
 
     private const string ServiceRegistrationMustBeSealedTitle = "Annotated class is not sealed";
@@ -53,7 +53,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         "Types annotated with [ServiceRegistrationItem] must implement IServiceRegistration or IServiceRegistration<TContext>.";
 
     private static readonly DiagnosticDescriptor MustBeSealed = new(
-        id: "SSC006",
+        id: DiagnosticIds.ServiceRegistrationMustBeSealed,
         title: ServiceRegistrationMustBeSealedTitle,
         messageFormat: "Type '{0}' is decorated with [ServiceRegistrationItem] but is not sealed",
         category: SharedConsts.DiagnosticCategory,
@@ -63,7 +63,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         helpLinkUri: string.Format(SharedConsts.HelpLinkUriFormat, "service-registration"));
 
     private static readonly DiagnosticDescriptor MustImplementInterface = new(
-        id: "SSC007",
+        id: DiagnosticIds.ServiceRegistrationMustImplementInterface,
         title: ServiceRegistrationItemMustImplementInterfaceTitle,
         messageFormat: "Type '{0}' must implement IServiceRegistration or IServiceRegistration<TContext>",
         category: SharedConsts.DiagnosticCategory,
@@ -257,7 +257,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         {
             if (attribute.AttributeClass?.ToDisplayString(
                     SymbolDisplayFormat.FullyQualifiedFormat) !=
-                "global::" + AttributeMetadataName)
+                $"global::{AttributeMetadataName}")
             {
                 continue;
             }
@@ -269,7 +269,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
                     return argument.Value.Value switch
                     {
                         uint value => value,
-                        int value when value >= 0 => (uint)value,
+                        int value and >= 0 => (uint)value,
                         _ => 0
                     };
                 }

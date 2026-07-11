@@ -1,10 +1,12 @@
-namespace SharpServiceCollection.Generators.InternalTypes;
+using SharpServiceCollection.Enums;
 
-internal sealed class ServiceRegistrationDescriptor
+namespace SharpServiceCollection.InternalTypes;
+
+internal readonly record struct ServiceRegistrationDescriptor
 {
     public required string ServiceTypeName { get; init; }
     public required string ImplementationTypeName { get; init; }
-    public required RegistrationLifetime Lifetime { get; init; }
+    public required InstanceLifetime Lifetime { get; init; }
     public required bool TryAdd { get; init; }
     public required bool Enumerable { get; init; }
     public required string Key { get; init; }

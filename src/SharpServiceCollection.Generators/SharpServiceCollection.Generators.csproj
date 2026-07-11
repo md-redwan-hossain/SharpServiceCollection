@@ -9,7 +9,8 @@
         <IsRoslynComponent>true</IsRoslynComponent>
         <IncludeBuildOutput>false</IncludeBuildOutput>
         <IsPackable>true</IsPackable>
-        
+        <RootNamespace>SharpServiceCollection</RootNamespace>
+
     </PropertyGroup>
 
     <ItemGroup>
@@ -28,7 +29,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\SharpServiceCollection.Dependencies\SharpServiceCollection.Dependencies.csproj" />
+        <ProjectReference Include="..\SharpServiceCollection.Dependencies\SharpServiceCollection.Dependencies.csproj"/>
     </ItemGroup>
 
 </Project>

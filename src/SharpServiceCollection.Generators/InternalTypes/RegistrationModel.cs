@@ -1,28 +1,14 @@
 using Microsoft.CodeAnalysis;
+using SharpServiceCollection.Enums;
 
-namespace SharpServiceCollection.Generators.InternalTypes;
+namespace SharpServiceCollection.InternalTypes;
 
-internal enum RegistrationResolveBy
-{
-    Self,
-    MatchingInterface,
-    ImplementedInterface,
-    ExplicitService
-}
-
-internal enum RegistrationLifetime
-{
-    Singleton,
-    Scoped,
-    Transient
-}
-
-internal sealed class RegistrationModel
+internal readonly record struct RegistrationModel
 {
     public required INamedTypeSymbol ImplementationType { get; init; }
     public required INamedTypeSymbol? ExplicitServiceType { get; init; }
-    public required RegistrationResolveBy ResolveBy { get; init; }
-    public required RegistrationLifetime Lifetime { get; init; }
+    public required ResolveBy ResolveBy { get; init; }
+    public required InstanceLifetime Lifetime { get; init; }
     public required bool TryAdd { get; init; }
     public required bool Enumerable { get; init; }
     public required string Key { get; init; }

@@ -211,7 +211,7 @@ NuGet consumers get `ServiceRegistrationRoot` as a compiler-visible property aut
 
 ### Per-project `ServiceRegistration`
 
-Must be **`sealed`**, named exactly **`ServiceRegistration`**, and inherit one of the bases (enforced by diagnostics SSC005–SSC007).
+Must be **`sealed`**, named exactly **`ServiceRegistration`**, and inherit one of the bases (enforced by diagnostics SSC005–SSC006).
 
 **Services only:**
 
@@ -285,6 +285,6 @@ Each referenced module’s `ServiceRegistration.ExecuteAsync` typically calls `A
 | SSC002 | Error | `ResolveBy.MatchingInterface` needs `I{ClassName}` |
 | SSC003 | Error | Invalid `InstanceLifetime` |
 | SSC004 | Error | Invalid `ResolveBy` |
-| SSC005 | Error | Type inheriting `ServiceRegistrationBase` must be named `ServiceRegistration` |
-| SSC006 | Error | That type must be `sealed` |
-| SSC007 | Error | `ServiceRegistration` needs an accessible parameterless constructor |
+
+| SSC005 | Error | That type must be `sealed` |
+| SSC006 | Error | `ServiceRegistration` needs an accessible parameterless constructor |

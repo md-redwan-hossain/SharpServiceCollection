@@ -4,82 +4,195 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
-using SharpServiceCollection.Generators.InternalTypes;
-using static SharpServiceCollection.Generators.Constants.InjectableDependencyConstants;
-using static SharpServiceCollection.Generators.Constants.InjectableDependencyConstants.DependencyInjection;
-using static SharpServiceCollection.Generators.Constants.InjectableDependencyConstants.TrackingNames;
+using SharpServiceCollection.Constants;
+using SharpServiceCollection.Enums;
+using SharpServiceCollection.InternalTypes;
 
 namespace SharpServiceCollection.Generators;
 
-// Optimised following Andrew Lock's "Creating a Source Generator - Part 9":
-// https://andrewlock.net/creating-a-source-generator-part-9-avoiding-performance-pitfalls-in-incremental-generators/
-//
-// Key wins:
-//   1. `ForAttributeWithMetadataName` pre-filters to nodes that actually carry
-//      `InjectableDependencyAttribute` (non-generic or unbound arity-1). The
-//      predicate stays purely syntactic - no semantic work, no allocations.
-//   2. The per-class transform returns a struct so we avoid allocating a fresh
-//      `List<>` per invalidation. Empty results are dropped before downstream
-//      stages.
-//   3. We only `Combine` with the assembly name - never with the full
-//      `Compilation` - so an edit that doesn't touch the assembly name doesn't
-//      re-run the emission stage.
-//   4. Every pipeline stage is decorated with `WithTrackingName` so the
-//      generator's behaviour is visible in incremental-gen traces.
 [Generator]
 public sealed class InjectableDependencyGenerator : IIncrementalGenerator
 {
+    private const string RuntimeAssemblyName = "SharpServiceCollection";
+    private const string GeneratedFileName = "SharpServiceCollection.Generated.g.cs";
+    private const string UnsupportedLifetimeMessage = "Unsupported lifetime";
+    private const string InterfaceNamePrefix = "I";
     private const string Indent = "        ";
     private const string TypeOfPrefix = "typeof(";
     private const string TypeOfSuffix = ")";
 
     private const string NonGenericAttributeMetadataName =
         "SharpServiceCollection.Attributes.InjectableDependencyAttribute";
+
     private const string GenericAttributeMetadataName =
         "SharpServiceCollection.Attributes.InjectableDependencyAttribute`1";
-    
-    private readonly record struct TypeRegistrationResult(
-        ImmutableArray<ServiceRegistrationDescriptor> Descriptors,
-        ImmutableArray<Diagnostic> Diagnostics)
+
+    private static class TrackingNames
     {
-        public static readonly TypeRegistrationResult Empty = new([], []);
+        internal const string NonGeneric = "InjectableDependency.NonGeneric";
+        internal const string Generic = "InjectableDependency.Generic";
+        internal const string CollectNonGeneric = "InjectableDependency.CollectNonGeneric";
+        internal const string CollectGeneric = "InjectableDependency.CollectGeneric";
+        internal const string CombineStreams = "InjectableDependency.CombineStreams";
+        internal const string CombineAssembly = "InjectableDependency.CombineAssembly";
+    }
+
+    private static class AttributeMetadata
+    {
+        internal const string Name = "InjectableDependencyAttribute";
+        internal const string Namespace = "SharpServiceCollection.Attributes";
+    }
+
+    private static class AttributeProperties
+    {
+        internal const string TryAdd = "TryAdd";
+        internal const string Enumerable = "Enumerable";
+        internal const string Key = "Key";
+        internal const string Order = "Order";
+    }
+
+    private static class GeneratedCode
+    {
+        internal const string Namespace = "SharpServiceCollection.Generated";
+        internal const string ExtensionsClassName = "GeneratedServiceCollectionExtensions";
+        internal const string AddServicesMethodName = "AddAttributedServices";
+        internal const string AddServicesMethodNamePrefix = "AddAttributedServicesFrom_";
+    }
+
+    private const string HelpLinkUriFormat =
+        "https://github.com/md-redwan-hossain/SharpServiceCollection/blob/main/README.md#{0}";
+
+    private const string EnumerableRequiresTryAddTitle = "Enumerable registration requires TryAdd";
+
+    private const string EnumerableRequiresTryAddDescription =
+        "When Enumerable is true, registrations must use TryAdd so duplicate implementations can coexist.";
+
+    private const string MatchingInterfaceMissingTitle = "Matching interface not found";
+
+    private const string MatchingInterfaceMissingDescription =
+        "ResolveBy.MatchingInterface expects a public interface named I{TypeName}.";
+
+    private const string InvalidLifetimeTitle = "Unsupported InjectableDependency lifetime";
+
+    private const string InvalidLifetimeDescription =
+        "Lifetime must be Singleton, Scoped, or Transient.";
+
+    private const string InvalidResolveByTitle = "Unsupported InjectableDependency resolve strategy";
+
+    private const string InvalidResolveByDescription =
+        "ResolveBy must be Self, ImplementedInterface, or MatchingInterface.";
+
+    private static readonly DiagnosticDescriptor EnumerableRequiresTryAdd = new(
+        id: DiagnosticIds.EnumerableRequiresTryAdd,
+        title: EnumerableRequiresTryAddTitle,
+        messageFormat: "Enumerable=true requires TryAdd=true for '{0}'",
+        category: SharedConsts.DiagnosticCategory,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: EnumerableRequiresTryAddDescription,
+        helpLinkUri: string.Format(HelpLinkUriFormat, "source-generated-registration"));
+
+    private static readonly DiagnosticDescriptor MatchingInterfaceMissing = new(
+        id: DiagnosticIds.MatchingInterfaceMissing,
+        title: MatchingInterfaceMissingTitle,
+        messageFormat: "ResolveBy.MatchingInterface requires interface '{0}' on '{1}'",
+        category: SharedConsts.DiagnosticCategory,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: MatchingInterfaceMissingDescription,
+        helpLinkUri: string.Format(HelpLinkUriFormat, "source-generated-registration"));
+
+    private static readonly DiagnosticDescriptor InvalidLifetime = new(
+        id: DiagnosticIds.InvalidLifetime,
+        title: InvalidLifetimeTitle,
+        messageFormat: "Unsupported lifetime '{0}' on '{1}'",
+        category: SharedConsts.DiagnosticCategory,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: InvalidLifetimeDescription,
+        helpLinkUri: string.Format(HelpLinkUriFormat, "source-generated-registration"));
+
+    private static readonly DiagnosticDescriptor InvalidResolveBy = new(
+        id: DiagnosticIds.InvalidResolveBy,
+        title: InvalidResolveByTitle,
+        messageFormat: "Unsupported resolve strategy on '{0}'",
+        category: SharedConsts.DiagnosticCategory,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: InvalidResolveByDescription,
+        helpLinkUri: string.Format(HelpLinkUriFormat, "source-generated-registration"));
+
+    private static class DependencyInjection
+    {
+        internal const string ServiceCollectionType =
+            "global::Microsoft.Extensions.DependencyInjection.IServiceCollection";
+
+        internal const string ServiceDescriptorType =
+            "global::Microsoft.Extensions.DependencyInjection.ServiceDescriptor";
+
+        internal const string ServiceLifetimeType =
+            "global::Microsoft.Extensions.DependencyInjection.ServiceLifetime";
+
+        internal const string TryAddEnumerableMethod = "TryAddEnumerable";
+        internal const string DescribeMethod = "Describe";
+
+        internal static class Methods
+        {
+            internal const string TryAddSingleton = "TryAddSingleton";
+            internal const string TryAddScoped = "TryAddScoped";
+            internal const string TryAddTransient = "TryAddTransient";
+            internal const string AddSingleton = "AddSingleton";
+            internal const string AddScoped = "AddScoped";
+            internal const string AddTransient = "AddTransient";
+            internal const string TryAddKeyedSingleton = "TryAddKeyedSingleton";
+            internal const string TryAddKeyedScoped = "TryAddKeyedScoped";
+            internal const string TryAddKeyedTransient = "TryAddKeyedTransient";
+            internal const string AddKeyedSingleton = "AddKeyedSingleton";
+            internal const string AddKeyedScoped = "AddKeyedScoped";
+            internal const string AddKeyedTransient = "AddKeyedTransient";
+        }
+
+        internal static class Lifetimes
+        {
+            internal const string Singleton = nameof(InstanceLifetime.Singleton);
+            internal const string Scoped = nameof(InstanceLifetime.Scoped);
+            internal const string Transient = nameof(InstanceLifetime.Transient);
+        }
+    }
+
+    private readonly record struct TypeRegistrationResult
+    {
+        public required ImmutableArray<ServiceRegistrationDescriptor> Descriptors { get; init; }
+        public required ImmutableArray<Diagnostic> Diagnostics { get; init; }
     }
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        // (1) Two pre-filtered streams: the non-generic attribute has metadata
-        // name `InjectableDependencyAttribute`, while the unbound generic
-        // `InjectableDependencyAttribute<T>` is reported as `...Attribute`1`.
-        // ForAttributeWithMetadataName requires both shapes to be queried
-        // explicitly - the predicate stays purely syntactic.
         var nonGenericStream = context.SyntaxProvider
             .ForAttributeWithMetadataName(
                 NonGenericAttributeMetadataName,
                 predicate: static (node, _) => node is ClassDeclarationSyntax,
                 transform: static (ctx, _) => AnalyzeClass(ctx))
-            .WithTrackingName(InjectableDependencyNonGeneric);
+            .WithTrackingName(TrackingNames.NonGeneric);
 
         var genericStream = context.SyntaxProvider
             .ForAttributeWithMetadataName(
                 GenericAttributeMetadataName,
                 predicate: static (node, _) => node is ClassDeclarationSyntax,
                 transform: static (ctx, _) => AnalyzeClass(ctx))
-            .WithTrackingName(InjectableDependencyGeneric);
+            .WithTrackingName(TrackingNames.Generic);
 
-        // (2) Collect each stream independently and combine. Cross-stream
-        // duplicates are absorbed by the deduplication in `EmitGeneratedCode`.
-        // We deliberately avoid combining with the full `Compilation` - the
-        // assembly name is sufficient and cheap to invalidate on.
+
         var assemblyName = context.CompilationProvider
             .Select(static (compilation, _) => compilation.AssemblyName);
 
         var combined = nonGenericStream
             .Collect()
-            .WithTrackingName(InjectableDependencyCollectNonGeneric)
-            .Combine(genericStream.Collect().WithTrackingName(InjectableDependencyCollectGeneric))
-            .WithTrackingName(InjectableDependencyCombineStreams)
+            .WithTrackingName(TrackingNames.CollectNonGeneric)
+            .Combine(genericStream.Collect().WithTrackingName(TrackingNames.CollectGeneric))
+            .WithTrackingName(TrackingNames.CombineStreams)
             .Combine(assemblyName)
-            .WithTrackingName(InjectableDependencyCombineAssembly);
+            .WithTrackingName(TrackingNames.CombineAssembly);
 
         context.RegisterSourceOutput(combined,
             static (spc, source) => EmitGeneratedCode(
@@ -93,21 +206,25 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
     {
         if (ctx.TargetSymbol is not INamedTypeSymbol symbol)
         {
-            return TypeRegistrationResult.Empty;
+            return new TypeRegistrationResult { Descriptors = [], Diagnostics = [] };
         }
 
         var registrations = new List<RegistrationModel>();
         var diagnostics = new List<Diagnostic>();
-        CollectRegistrations(symbol, registrations, diagnostics);
+        CollectRegistrations(ctx.Attributes, symbol, registrations, diagnostics);
 
         var descriptors = ExpandRegistrations(registrations, diagnostics);
 
         if (descriptors.Count == 0 && diagnostics.Count == 0)
         {
-            return TypeRegistrationResult.Empty;
+            return new TypeRegistrationResult { Descriptors = [], Diagnostics = [] };
         }
 
-        return new TypeRegistrationResult([..descriptors], [..diagnostics]);
+        return new TypeRegistrationResult
+        {
+            Descriptors = [..descriptors],
+            Diagnostics = [..diagnostics]
+        };
     }
 
     private static void EmitGeneratedCode(
@@ -123,7 +240,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
 
         var descriptors = new List<ServiceRegistrationDescriptor>();
         var seen = new HashSet<(string ServiceTypeName, string ImplementationTypeName, string Key,
-            RegistrationLifetime Lifetime, bool TryAdd, bool Enumerable)>();
+            InstanceLifetime Lifetime, bool TryAdd, bool Enumerable)>();
 
         CollectDescriptors(nonGenericResults, descriptors, seen, context);
         CollectDescriptors(genericResults, descriptors, seen, context);
@@ -141,7 +258,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
         ImmutableArray<TypeRegistrationResult> results,
         List<ServiceRegistrationDescriptor> descriptors,
         HashSet<(string ServiceTypeName, string ImplementationTypeName, string Key,
-            RegistrationLifetime Lifetime, bool TryAdd, bool Enumerable)> seen,
+            InstanceLifetime Lifetime, bool TryAdd, bool Enumerable)> seen,
         SourceProductionContext context)
     {
         foreach (var result in results)
@@ -165,11 +282,12 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
     }
 
     private static void CollectRegistrations(
+        ImmutableArray<AttributeData> attributes,
         INamedTypeSymbol typeSymbol,
         ICollection<RegistrationModel> registrations,
         ICollection<Diagnostic> diagnostics)
     {
-        foreach (var attribute in typeSymbol.GetAttributes())
+        foreach (var attribute in attributes)
         {
             var attributeClass = attribute.AttributeClass;
             if (attributeClass is null)
@@ -182,7 +300,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
                 var registration = CreateNonGenericRegistration(typeSymbol, attribute, diagnostics);
                 if (registration is not null)
                 {
-                    registrations.Add(registration);
+                    registrations.Add(registration.Value);
                 }
             }
             else if (IsGenericInjectableDependencyAttribute(attributeClass))
@@ -190,7 +308,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
                 var registration = CreateGenericRegistration(typeSymbol, attribute, diagnostics);
                 if (registration is not null)
                 {
-                    registrations.Add(registration);
+                    registrations.Add(registration.Value);
                 }
             }
         }
@@ -221,7 +339,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
         if (!TryParseLifetime(attribute.ConstructorArguments[0], out var lifetime))
         {
             diagnostics.Add(Diagnostic.Create(
-                GeneratorDiagnostics.InvalidLifetime,
+                InvalidLifetime,
                 attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation(),
                 attribute.ConstructorArguments[0].Value?.ToString() ?? "null",
                 implementationType.ToDisplayString()));
@@ -231,7 +349,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
         if (!TryParseResolveBy(attribute.ConstructorArguments[1], out var resolveBy))
         {
             diagnostics.Add(Diagnostic.Create(
-                GeneratorDiagnostics.InvalidResolveBy,
+                InvalidResolveBy,
                 attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation(),
                 implementationType.ToDisplayString()));
             return null;
@@ -269,7 +387,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
         if (!TryParseLifetime(attribute.ConstructorArguments[0], out var lifetime))
         {
             diagnostics.Add(Diagnostic.Create(
-                GeneratorDiagnostics.InvalidLifetime,
+                InvalidLifetime,
                 attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation(),
                 attribute.ConstructorArguments[0].Value?.ToString() ?? "null",
                 implementationType.ToDisplayString()));
@@ -292,7 +410,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
         {
             ImplementationType = implementationType,
             ExplicitServiceType = explicitServiceType,
-            ResolveBy = RegistrationResolveBy.ExplicitService,
+            ResolveBy = default,
             Lifetime = lifetime,
             TryAdd = tryAdd,
             Enumerable = enumerable,
@@ -302,42 +420,34 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
         };
     }
 
-    private static bool TryParseLifetime(TypedConstant value, out RegistrationLifetime lifetime)
+    private static bool TryParseLifetime(TypedConstant value, out InstanceLifetime lifetime)
     {
         lifetime = default;
-        if (value.Value is null)
+        if (value.Value is not byte numeric ||
+            numeric is not ((byte)InstanceLifetime.Singleton or
+                (byte)InstanceLifetime.Scoped or
+                (byte)InstanceLifetime.Transient))
         {
             return false;
         }
 
-        var numeric = Convert.ToInt32(value.Value);
-        lifetime = numeric switch
-        {
-            1 => RegistrationLifetime.Singleton,
-            2 => RegistrationLifetime.Scoped,
-            3 => RegistrationLifetime.Transient,
-            _ => default
-        };
-        return numeric is 1 or 2 or 3;
+        lifetime = (InstanceLifetime)numeric;
+        return true;
     }
 
-    private static bool TryParseResolveBy(TypedConstant value, out RegistrationResolveBy resolveBy)
+    private static bool TryParseResolveBy(TypedConstant value, out ResolveBy resolveBy)
     {
         resolveBy = default;
-        if (value.Value is null)
+        if (value.Value is not byte numeric ||
+            numeric is not ((byte)ResolveBy.Self or
+                (byte)ResolveBy.ImplementedInterface or
+                (byte)ResolveBy.MatchingInterface))
         {
             return false;
         }
 
-        var numeric = Convert.ToInt32(value.Value);
-        resolveBy = numeric switch
-        {
-            1 => RegistrationResolveBy.Self,
-            2 => RegistrationResolveBy.ImplementedInterface,
-            3 => RegistrationResolveBy.MatchingInterface,
-            _ => default
-        };
-        return numeric is 1 or 2 or 3;
+        resolveBy = (ResolveBy)numeric;
+        return true;
     }
 
     private static bool GetNamedBool(AttributeData attribute, string key, bool defaultValue)
@@ -387,25 +497,32 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
 
         foreach (var registration in registrations)
         {
-            if (!registration.TryAdd && registration.Enumerable)
+            if (registration is { TryAdd: false, Enumerable: true })
             {
                 diagnostics.Add(Diagnostic.Create(
-                    GeneratorDiagnostics.EnumerableRequiresTryAdd,
+                    EnumerableRequiresTryAdd,
                     registration.Location,
                     registration.ImplementationType.ToDisplayString()));
                 continue;
             }
 
+            if (registration.ExplicitServiceType is not null)
+            {
+                output.Add(ToDescriptor(registration.ExplicitServiceType, registration.ImplementationType,
+                    registration));
+                continue;
+            }
+
             switch (registration.ResolveBy)
             {
-                case RegistrationResolveBy.Self:
+                case ResolveBy.Self:
                     output.Add(ToDescriptor(
                         registration.ImplementationType,
                         registration.ImplementationType,
                         registration));
                     break;
 
-                case RegistrationResolveBy.MatchingInterface:
+                case ResolveBy.MatchingInterface:
                 {
                     var interfaceName = $"{InterfaceNamePrefix}{registration.ImplementationType.Name}";
                     var matched = registration.ImplementationType.Interfaces
@@ -413,7 +530,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
                     if (matched is null)
                     {
                         diagnostics.Add(Diagnostic.Create(
-                            GeneratorDiagnostics.MatchingInterfaceMissing,
+                            MatchingInterfaceMissing,
                             registration.Location,
                             interfaceName,
                             registration.ImplementationType.ToDisplayString()));
@@ -424,7 +541,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
                     break;
                 }
 
-                case RegistrationResolveBy.ImplementedInterface:
+                case ResolveBy.ImplementedInterface:
                     foreach (var interfaceType in registration.ImplementationType.Interfaces)
                     {
                         output.Add(ToDescriptor(interfaceType, registration.ImplementationType, registration));
@@ -432,18 +549,10 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
 
                     break;
 
-                case RegistrationResolveBy.ExplicitService:
-                    if (registration.ExplicitServiceType is not null)
-                    {
-                        output.Add(ToDescriptor(registration.ExplicitServiceType, registration.ImplementationType,
-                            registration));
-                    }
-
-                    break;
 
                 default:
                     diagnostics.Add(Diagnostic.Create(
-                        GeneratorDiagnostics.InvalidResolveBy,
+                        InvalidResolveBy,
                         registration.Location,
                         registration.ImplementationType.ToDisplayString()));
                     break;
@@ -474,7 +583,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
     private static string BuildSource(IReadOnlyCollection<ServiceRegistrationDescriptor> registrations,
         string? assemblyName)
     {
-        var sanitisedAssemblyName = AssemblyNameSanitizer.Sanitize(assemblyName);
+        var sanitisedAssemblyName = AssemblyNameSanitizer.Sanitize(assemblyName).TrimStart('_');
         var assemblySpecificMethodName = $"{GeneratedCode.AddServicesMethodNamePrefix}{sanitisedAssemblyName}";
         var registrationsSource = BuildRegistrationsSource(registrations);
 
@@ -487,12 +596,12 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
 
                  public static class {{GeneratedCode.ExtensionsClassName}}
                  {
-                     internal static {{ServiceCollectionType}} {{GeneratedCode.AddServicesMethodName}}(
-                         this {{ServiceCollectionType}} services)
+                     internal static {{DependencyInjection.ServiceCollectionType}} {{GeneratedCode.AddServicesMethodName}}(
+                                              this {{DependencyInjection.ServiceCollectionType}} services)
                          => services.{{assemblySpecificMethodName}}();
 
-                     public static {{ServiceCollectionType}} {{assemblySpecificMethodName}}(
-                         this {{ServiceCollectionType}} services)
+                     public static {{DependencyInjection.ServiceCollectionType}} {{assemblySpecificMethodName}}(
+                                              this {{DependencyInjection.ServiceCollectionType}} services)
                      {
                  {{registrationsSource}}
                  {{Indent}}return services;
@@ -528,7 +637,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
         {
             var lifetimeName = ToServiceLifetimeName(registration.Lifetime);
             builder.AppendLine(
-                $"{Indent}services.{TryAddEnumerableMethod}({ServiceDescriptorType}.{DescribeMethod}({serviceType}, {implType}, {ServiceLifetimeType}.{lifetimeName}));");
+                $"{Indent}services.{DependencyInjection.TryAddEnumerableMethod}({DependencyInjection.ServiceDescriptorType}.{DependencyInjection.DescribeMethod}({serviceType}, {implType}, {DependencyInjection.ServiceLifetimeType}.{lifetimeName}));");
             return;
         }
 
@@ -549,41 +658,41 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
     private static string TypeOfExpression(string typeName)
         => $"{TypeOfPrefix}{typeName}{TypeOfSuffix}";
 
-    private static string GetNonKeyedMethodName(RegistrationLifetime lifetime, bool tryAdd)
+    private static string GetNonKeyedMethodName(InstanceLifetime lifetime, bool tryAdd)
     {
         return (lifetime, tryAdd) switch
         {
-            (RegistrationLifetime.Singleton, true) => Methods.TryAddSingleton,
-            (RegistrationLifetime.Scoped, true) => Methods.TryAddScoped,
-            (RegistrationLifetime.Transient, true) => Methods.TryAddTransient,
-            (RegistrationLifetime.Singleton, false) => Methods.AddSingleton,
-            (RegistrationLifetime.Scoped, false) => Methods.AddScoped,
-            (RegistrationLifetime.Transient, false) => Methods.AddTransient,
+            (InstanceLifetime.Singleton, true) => DependencyInjection.Methods.TryAddSingleton,
+            (InstanceLifetime.Scoped, true) => DependencyInjection.Methods.TryAddScoped,
+            (InstanceLifetime.Transient, true) => DependencyInjection.Methods.TryAddTransient,
+            (InstanceLifetime.Singleton, false) => DependencyInjection.Methods.AddSingleton,
+            (InstanceLifetime.Scoped, false) => DependencyInjection.Methods.AddScoped,
+            (InstanceLifetime.Transient, false) => DependencyInjection.Methods.AddTransient,
             _ => throw new InvalidOperationException(UnsupportedLifetimeMessage)
         };
     }
 
-    private static string GetKeyedMethodName(RegistrationLifetime lifetime, bool tryAdd)
+    private static string GetKeyedMethodName(InstanceLifetime lifetime, bool tryAdd)
     {
         return (lifetime, tryAdd) switch
         {
-            (RegistrationLifetime.Singleton, true) => Methods.TryAddKeyedSingleton,
-            (RegistrationLifetime.Scoped, true) => Methods.TryAddKeyedScoped,
-            (RegistrationLifetime.Transient, true) => Methods.TryAddKeyedTransient,
-            (RegistrationLifetime.Singleton, false) => Methods.AddKeyedSingleton,
-            (RegistrationLifetime.Scoped, false) => Methods.AddKeyedScoped,
-            (RegistrationLifetime.Transient, false) => Methods.AddKeyedTransient,
+            (InstanceLifetime.Singleton, true) => DependencyInjection.Methods.TryAddKeyedSingleton,
+            (InstanceLifetime.Scoped, true) => DependencyInjection.Methods.TryAddKeyedScoped,
+            (InstanceLifetime.Transient, true) => DependencyInjection.Methods.TryAddKeyedTransient,
+            (InstanceLifetime.Singleton, false) => DependencyInjection.Methods.AddKeyedSingleton,
+            (InstanceLifetime.Scoped, false) => DependencyInjection.Methods.AddKeyedScoped,
+            (InstanceLifetime.Transient, false) => DependencyInjection.Methods.AddKeyedTransient,
             _ => throw new InvalidOperationException(UnsupportedLifetimeMessage)
         };
     }
 
-    private static string ToServiceLifetimeName(RegistrationLifetime lifetime)
+    private static string ToServiceLifetimeName(InstanceLifetime lifetime)
     {
         return lifetime switch
         {
-            RegistrationLifetime.Singleton => Lifetimes.Singleton,
-            RegistrationLifetime.Scoped => Lifetimes.Scoped,
-            RegistrationLifetime.Transient => Lifetimes.Transient,
+            InstanceLifetime.Singleton => DependencyInjection.Lifetimes.Singleton,
+            InstanceLifetime.Scoped => DependencyInjection.Lifetimes.Scoped,
+            InstanceLifetime.Transient => DependencyInjection.Lifetimes.Transient,
             _ => throw new InvalidOperationException(UnsupportedLifetimeMessage)
         };
     }
