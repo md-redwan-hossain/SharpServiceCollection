@@ -1,4 +1,4 @@
-namespace SharpServiceCollection.SourceGenerator.InternalTypes;
+namespace SharpServiceCollection.Generators.InternalTypes;
 
 internal sealed class ItemRegistrationDescriptor
 {

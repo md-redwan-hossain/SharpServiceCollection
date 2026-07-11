@@ -5,7 +5,7 @@
     </ItemGroup>
     
     <ItemGroup>
-        <ProjectReference Include="..\SharpServiceCollection.SourceGenerator\SharpServiceCollection.SourceGenerator.csproj"/>
+        <ProjectReference Include="..\SharpServiceCollection.Generators\SharpServiceCollection.Generators.csproj" />
     </ItemGroup>
 
     <PropertyGroup>

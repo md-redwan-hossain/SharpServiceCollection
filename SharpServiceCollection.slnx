@@ -1,7 +1,7 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/SharpServiceCollection.Generators/SharpServiceCollection.Generators.csproj" />
     <Project Path="src/SharpServiceCollection/SharpServiceCollection.csproj" />
-    <Project Path="src/SharpServiceCollection.SourceGenerator/SharpServiceCollection.SourceGenerator.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/ServiceRegistration.ModuleA/ServiceRegistration.ModuleA.csproj" />

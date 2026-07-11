@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace SharpServiceCollection.SourceGenerator.InternalTypes;
+namespace SharpServiceCollection.Generators.InternalTypes;
 
 internal static class AssemblyNameSanitizer
 {

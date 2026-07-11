@@ -47,7 +47,7 @@
           "System.Runtime.CompilerServices.Unsafe": "6.1.2"
         }
       },
-      "sharpservicecollection.sourcegenerator": {
+      "sharpservicecollection.generators": {
         "type": "Project"
       }
     }

@@ -17,10 +17,10 @@
       "sharpservicecollection": {
         "type": "Project",
         "dependencies": {
-          "SharpServiceCollection.SourceGenerator": "[1.0.0, )"
+          "SharpServiceCollection.Generators": "[1.0.0, )"
         }
       },
-      "sharpservicecollection.sourcegenerator": {
+      "sharpservicecollection.generators": {
         "type": "Project"
       }
     }

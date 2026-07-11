@@ -1,6 +1,6 @@
 using Microsoft.CodeAnalysis;
 
-namespace SharpServiceCollection.SourceGenerator.InternalTypes;
+namespace SharpServiceCollection.Generators.InternalTypes;
 
 internal enum RegistrationResolveBy
 {

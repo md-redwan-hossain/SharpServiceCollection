@@ -4,15 +4,15 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
-using SharpServiceCollection.SourceGenerator.InternalTypes;
-using static SharpServiceCollection.SourceGenerator.InternalTypes.GeneratorConstants;
-using static SharpServiceCollection.SourceGenerator.InternalTypes.GeneratorConstants.AttributeMetadata;
-using static SharpServiceCollection.SourceGenerator.InternalTypes.GeneratorConstants.DependencyInjection;
-using static SharpServiceCollection.SourceGenerator.InternalTypes.GeneratorConstants.ServiceRegistration;
-using static SharpServiceCollection.SourceGenerator.InternalTypes.GeneratorConstants.TrackingNames;
+using SharpServiceCollection.Generators.InternalTypes;
+using static SharpServiceCollection.Generators.InternalTypes.GeneratorConstants;
+using static SharpServiceCollection.Generators.InternalTypes.GeneratorConstants.AttributeMetadata;
+using static SharpServiceCollection.Generators.InternalTypes.GeneratorConstants.DependencyInjection;
+using static SharpServiceCollection.Generators.InternalTypes.GeneratorConstants.ServiceRegistration;
+using static SharpServiceCollection.Generators.InternalTypes.GeneratorConstants.TrackingNames;
 
 
-namespace SharpServiceCollection.SourceGenerator.Generators;
+namespace SharpServiceCollection.Generators.Generators;
 
 [Generator]
 public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
@@ -27,7 +27,11 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         public bool IsEmpty => Item is null;
     }
 
-    private readonly record struct CompilationContext(Compilation Compilation, bool IsServiceRegistrationRoot);
+    private readonly record struct CompilationContext
+    {
+        public required Compilation Compilation { get; init; }
+        public required bool IsServiceRegistrationRoot { get; init; }
+    }
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -64,9 +68,11 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         // and resolved through `AnalyzerConfigOptionsProvider`.
         var compilationContext = context.CompilationProvider
             .Combine(context.AnalyzerConfigOptionsProvider)
-            .Select(static (tuple, _) => new CompilationContext(
-                Compilation: tuple.Left,
-                IsServiceRegistrationRoot: ReadServiceRegistrationRootFlag(tuple.Right)))
+            .Select(static (tuple, _) => new CompilationContext
+            {
+                Compilation = tuple.Left,
+                IsServiceRegistrationRoot = ReadServiceRegistrationRootFlag(tuple.Right)
+            })
             .WithTrackingName(ServiceRegistrationCombineCompilation);
 
         var combined = collected.Combine(compilationContext);

@@ -1,10 +1,10 @@
-namespace SharpServiceCollection.SourceGenerator.InternalTypes;
+namespace SharpServiceCollection.Generators.InternalTypes;
 
 internal static class GeneratorConstants
 {
     internal const string RuntimeAssemblyName = "SharpServiceCollection";
     internal const string GeneratedFileName = "SharpServiceCollection.Generated.g.cs";
-    internal const string DiagnosticCategory = "SharpServiceCollection.SourceGenerator";
+    internal const string DiagnosticCategory = "SharpServiceCollection.Generators";
     internal const string InterfaceNamePrefix = "I";
     internal const string UnsupportedLifetimeMessage = "Unsupported lifetime";
 
