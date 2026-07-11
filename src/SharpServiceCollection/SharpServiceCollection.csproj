@@ -22,13 +22,10 @@
 
     <ItemGroup>
         <ProjectReference Include="..\SharpServiceCollection.Dependencies\SharpServiceCollection.Dependencies.csproj"
-                          PrivateAssets="all"
-        />
-        <!-- Consider adding ReferenceOutputAssembly="false" below if your main library
-             never references types from Generators directly at compile time. -->
+                          PrivateAssets="All" />
         <ProjectReference Include="..\SharpServiceCollection.Generators\SharpServiceCollection.Generators.csproj"
-                          PrivateAssets="all" ReferenceOutputAssembly="false"
-        />
+                          PrivateAssets="All"
+                          ReferenceOutputAssembly="false" />
     </ItemGroup>
 
     <!-- Bundle the supporting assemblies into this single consumer package. -->
@@ -37,8 +34,6 @@
               Pack="true"
               PackagePath="analyzers\dotnet\cs"
               Visible="false"/>
-        <!-- Only needed here too if the generator itself calls into Dependencies at compile time
-             (Roslyn only loads DLLs from analyzers/dotnet/cs, not from lib/). -->
         <None Include="..\SharpServiceCollection.Dependencies\bin\$(Configuration)\$(TargetFramework)\SharpServiceCollection.Dependencies.dll"
               Pack="true"
               PackagePath="analyzers\dotnet\cs"
@@ -63,7 +58,7 @@
 
     <Target Name="CopyProjectReferencesToPackage" DependsOnTargets="BuildOnlySettings;ResolveReferences">
         <ItemGroup>
-            <_ReferenceCopyLocalPaths Include="@(ReferenceCopyLocalPaths->WithMetadataValue('ReferenceSourceTarget', 'ProjectReference')->WithMetadataValue('PrivateAssets', 'All')->WithMetadataValue('Filename', 'SharpServiceCollection.Dependencies'))"/>
+            <_ReferenceCopyLocalPaths Include="@(ReferenceCopyLocalPaths->WithMetadataValue('ReferenceSourceTarget', 'ProjectReference')->WithMetadataValue('PrivateAssets', 'All'))" />
             <BuildOutputInPackage Include="@(_ReferenceCopyLocalPaths)" TargetPath="%(_ReferenceCopyLocalPaths.DestinationSubDirectory)"/>
         </ItemGroup>
     </Target>
