@@ -5,30 +5,22 @@
       "serviceregistration.modulea": {
         "type": "Project",
         "dependencies": {
-          "SharpServiceCollection": "[1.0.0, )"
+          "SharpServiceCollection": "[1.0.1, )",
+          "SharpServiceCollection.Dependencies": "[1.0.0, )"
         }
       },
       "serviceregistration.moduleb": {
         "type": "Project",
         "dependencies": {
-          "SharpServiceCollection": "[1.0.0, )"
+          "SharpServiceCollection": "[1.0.1, )",
+          "SharpServiceCollection.Dependencies": "[1.0.0, )"
         }
       },
       "sharpservicecollection": {
-        "type": "Project",
-        "dependencies": {
-          "SharpServiceCollection.Dependencies": "[1.0.0, )",
-          "SharpServiceCollection.Generators": "[1.0.0, )"
-        }
+        "type": "Project"
       },
       "sharpservicecollection.dependencies": {
         "type": "Project"
-      },
-      "sharpservicecollection.generators": {
-        "type": "Project",
-        "dependencies": {
-          "SharpServiceCollection.Dependencies": "[1.0.0, )"
-        }
       }
     }
   }

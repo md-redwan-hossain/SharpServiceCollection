@@ -1,31 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <ItemGroup>
-        <ProjectReference Include="..\SharpServiceCollection.Dependencies\SharpServiceCollection.Dependencies.csproj" />
-        <ProjectReference Include="..\SharpServiceCollection.Generators\SharpServiceCollection.Generators.csproj" />
-    </ItemGroup>
-
-    <!-- Bundle the supporting assemblies into this single consumer package. -->
-    <ItemGroup>
-        <None Include="..\SharpServiceCollection.Dependencies\bin\$(Configuration)\$(TargetFramework)\SharpServiceCollection.Dependencies.dll"
-              Pack="true"
-              PackagePath="lib\$(TargetFramework)"
-              Visible="false" />
-        <None Include="..\SharpServiceCollection.Generators\bin\$(Configuration)\$(TargetFramework)\SharpServiceCollection.Generators.dll"
-              Pack="true"
-              PackagePath="analyzers\dotnet\cs"
-              Visible="false" />
-        <None Include="..\SharpServiceCollection.Dependencies\bin\$(Configuration)\$(TargetFramework)\SharpServiceCollection.Dependencies.dll"
-              Pack="true"
-              PackagePath="analyzers\dotnet\cs"
-              Visible="false" />
-    </ItemGroup>
-
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>
         <LangVersion>latest</LangVersion>
         <Nullable>enable</Nullable>
-        <Version>1.0.0</Version>
+        <Version>1.0.1</Version>
         <Title>SharpServiceCollection</Title>
         <Authors>Md. Redwan Hossain</Authors>
         <Copyright>Copyright (c) Md. Redwan Hossain</Copyright>
@@ -38,7 +17,33 @@
         <NoWarn>CS1591</NoWarn>
         <DocumentationFile Condition="'$(Configuration)'=='Release'">bin\$(Configuration)\$(TargetFramework)\SharpServiceCollection.xml</DocumentationFile>
         <Description>SharpServiceCollection is a lightweight C# library that provides declarative workflow for IServiceCollection.</Description>
+        <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);CopyProjectReferencesToPackage</TargetsForTfmSpecificBuildOutput>
     </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\SharpServiceCollection.Dependencies\SharpServiceCollection.Dependencies.csproj"
+                          PrivateAssets="all"
+        />
+        <!-- Consider adding ReferenceOutputAssembly="false" below if your main library
+             never references types from Generators directly at compile time. -->
+        <ProjectReference Include="..\SharpServiceCollection.Generators\SharpServiceCollection.Generators.csproj"
+                          PrivateAssets="all" ReferenceOutputAssembly="false"
+        />
+    </ItemGroup>
+
+    <!-- Bundle the supporting assemblies into this single consumer package. -->
+    <ItemGroup>
+        <None Include="..\SharpServiceCollection.Generators\bin\$(Configuration)\$(TargetFramework)\SharpServiceCollection.Generators.dll"
+              Pack="true"
+              PackagePath="analyzers\dotnet\cs"
+              Visible="false"/>
+        <!-- Only needed here too if the generator itself calls into Dependencies at compile time
+             (Roslyn only loads DLLs from analyzers/dotnet/cs, not from lib/). -->
+        <None Include="..\SharpServiceCollection.Dependencies\bin\$(Configuration)\$(TargetFramework)\SharpServiceCollection.Dependencies.dll"
+              Pack="true"
+              PackagePath="analyzers\dotnet\cs"
+              Visible="false"/>
+    </ItemGroup>
 
     <ItemGroup>
         <None Include="..\..\logo.png">
@@ -48,7 +53,6 @@
         </None>
     </ItemGroup>
 
-
     <ItemGroup>
         <None Include="..\..\README.md">
             <Pack>True</Pack>
@@ -57,5 +61,11 @@
         </None>
     </ItemGroup>
 
+    <Target Name="CopyProjectReferencesToPackage" DependsOnTargets="BuildOnlySettings;ResolveReferences">
+        <ItemGroup>
+            <_ReferenceCopyLocalPaths Include="@(ReferenceCopyLocalPaths->WithMetadataValue('ReferenceSourceTarget', 'ProjectReference')->WithMetadataValue('PrivateAssets', 'All')->WithMetadataValue('Filename', 'SharpServiceCollection.Dependencies'))"/>
+            <BuildOutputInPackage Include="@(_ReferenceCopyLocalPaths)" TargetPath="%(_ReferenceCopyLocalPaths.DestinationSubDirectory)"/>
+        </ItemGroup>
+    </Target>
 
 </Project>
