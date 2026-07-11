@@ -4,13 +4,16 @@
         <TargetFramework>net10.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
+        <ServiceRegistrationRoot>true</ServiceRegistrationRoot>
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\src\SharpServiceCollection\SharpServiceCollection.csproj" />
-      <ProjectReference Include="..\src\SharpServiceCollection.SourceGenerator\SharpServiceCollection.SourceGenerator.csproj"
-                        OutputItemType="Analyzer"
-                        ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\src\SharpServiceCollection\SharpServiceCollection.csproj"/>
+        <ProjectReference Include="..\src\SharpServiceCollection.SourceGenerator\SharpServiceCollection.SourceGenerator.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="false"/>
+        <ProjectReference Include="..\test\ServiceRegistration.ModuleA\ServiceRegistration.ModuleA.csproj" />
+        <ProjectReference Include="..\test\ServiceRegistration.ModuleB\ServiceRegistration.ModuleB.csproj" />
     </ItemGroup>
 
 </Project>

@@ -1,11 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
-using SharpServiceCollection.Extensions;
+using SharpServiceCollection.Generated;
 using TrialWebApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// builder.Services.AddAttributedServices();
-builder.Services.AddServicesFromCurrentAssembly();
+builder.Services.AddAttributedServices();
 
 var app = builder.Build();
 

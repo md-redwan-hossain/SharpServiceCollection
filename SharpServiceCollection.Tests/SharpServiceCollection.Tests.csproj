@@ -36,8 +36,6 @@
                         ReferenceOutputAssembly="false" />
       <ProjectReference Include="..\test\ServiceRegistration.ModuleA\ServiceRegistration.ModuleA.csproj" />
       <ProjectReference Include="..\test\ServiceRegistration.ModuleB\ServiceRegistration.ModuleB.csproj" />
-      <ProjectReference Include="..\test\ServiceRegistration.ModuleGeneric\ServiceRegistration.ModuleGeneric.csproj" />
-      <ProjectReference Include="..\test\ServiceRegistration.TestShared\ServiceRegistration.TestShared.csproj" />
     </ItemGroup>
 
 </Project>

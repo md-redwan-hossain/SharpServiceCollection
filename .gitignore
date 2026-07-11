@@ -17,3 +17,4 @@ node_modules
 **/PublishProfiles
 **/.fuse*
 **/*.sqlite3
+**/*puku
