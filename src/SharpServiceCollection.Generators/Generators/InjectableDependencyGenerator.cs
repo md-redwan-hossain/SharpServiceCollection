@@ -17,7 +17,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
     private const string RuntimeAssemblyName = "SharpServiceCollection";
     private const string DisablePropertyName =
         "build_property.DisableInjectableDependencyGenerator";
-    private const string GeneratedFileName = "SharpServiceCollection.Generated.g.cs";
+    private const string GeneratedFileName = "SharpServiceCollection.InjectableDependency.Generated.g.cs";
     private const string UnsupportedLifetimeMessage = "Unsupported lifetime";
     private const string InterfaceNamePrefix = "I";
     private const string Indent = "        ";

@@ -1,0 +1,7 @@
+<Project>
+  <ItemGroup>
+    <CompilerVisibleProperty Include="ServiceRegistrationRoot" />
+    <CompilerVisibleProperty Include="DisableInjectableDependencyGenerator" />
+    <CompilerVisibleProperty Include="DisableServiceRegistrationGenerator" />
+  </ItemGroup>
+</Project>

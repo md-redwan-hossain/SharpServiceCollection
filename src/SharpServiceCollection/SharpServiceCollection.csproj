@@ -4,7 +4,7 @@
         <TargetFramework>netstandard2.0</TargetFramework>
         <LangVersion>latest</LangVersion>
         <Nullable>enable</Nullable>
-        <Version>1.0.2</Version>
+        <Version>1.0.3</Version>
         <Title>SharpServiceCollection</Title>
         <Authors>Md. Redwan Hossain</Authors>
         <Copyright>Copyright (c) Md. Redwan Hossain</Copyright>
@@ -54,6 +54,13 @@
             <Link>README.md</Link>
             <PackagePath>.</PackagePath>
         </None>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="buildTransitive\SharpServiceCollection.props"
+              Pack="true"
+              PackagePath="buildTransitive\SharpServiceCollection.props"
+              Visible="false" />
     </ItemGroup>
 
     <Target Name="CopyProjectReferencesToPackage" DependsOnTargets="BuildOnlySettings;ResolveReferences">
