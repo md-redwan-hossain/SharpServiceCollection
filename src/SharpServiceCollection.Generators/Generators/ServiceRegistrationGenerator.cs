@@ -89,24 +89,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         GeneratorAttributeSyntaxContext ctx,
         bool isGeneric)
     {
-        try
-        {
-            return AnalyzeAttributeCore(ctx, isGeneric);
-        }
-        catch (Exception ex)
-        {
-            string detail = string.Concat(
-                ex.GetType().Name, ": ", ex.Message,
-                " | targetNodeType=", ctx.TargetNode.GetType().Name,
-                " | targetSymbolKind=", ctx.TargetSymbol.Kind.ToString(),
-                " | isGeneric=", isGeneric.ToString());
-
-            return new ItemAndDiagnostics(null,
-                ImmutableArray.Create(Diagnostic.Create(
-                    GeneratorDiagnostics.DebugDiagnostic,
-                    ctx.TargetNode.GetLocation(),
-                    detail)));
-        }
+        return AnalyzeAttributeCore(ctx, isGeneric);
     }
 
     private static ItemAndDiagnostics AnalyzeAttributeCore(
@@ -341,7 +324,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         return false;
     }
 
-    // SSR008 must implement ExecuteAsync. The non-generic variant takes one parameter
+    // SSC008 must implement ExecuteAsync. The non-generic variant takes one parameter
     // (the IServiceCollection); the generic variant takes two (the IServiceCollection
     // plus the context type). We don't bind to a base class anymore — the [ServiceRegistration]
     // attribute is the only contract, so the user is free to name/structure the class.

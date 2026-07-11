@@ -66,7 +66,7 @@ Use `InjectableDependency<T>` when you need an explicit service type without nam
 
 #### Source-generated (compile-time, AOT-friendly)
 
-<a id="source-generated-registration-aot-friendly"></a>
+<a id="source-generated-registration"></a>
 
 The generator runs on every build of a consuming project. It emits:
 

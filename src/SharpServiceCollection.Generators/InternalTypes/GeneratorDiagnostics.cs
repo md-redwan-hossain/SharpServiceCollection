@@ -30,7 +30,7 @@ internal static class GeneratorDiagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: EnumerableRequiresTryAddDescription,
-        helpLinkUri: string.Format(HelpLinkUriFormat, "source-generated-registration-aot-friendly"));
+        helpLinkUri: string.Format(HelpLinkUriFormat, "source-generated-registration"));
 
     internal static readonly DiagnosticDescriptor MatchingInterfaceMissing = new(
         id: "SSC002",
@@ -40,7 +40,7 @@ internal static class GeneratorDiagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: MatchingInterfaceMissingDescription,
-        helpLinkUri: string.Format(HelpLinkUriFormat, "source-generated-registration-aot-friendly"));
+        helpLinkUri: string.Format(HelpLinkUriFormat, "source-generated-registration"));
 
     internal static readonly DiagnosticDescriptor InvalidLifetime = new(
         id: "SSC003",
@@ -50,7 +50,7 @@ internal static class GeneratorDiagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: InvalidLifetimeDescription,
-        helpLinkUri: string.Format(HelpLinkUriFormat, "source-generated-registration-aot-friendly"));
+        helpLinkUri: string.Format(HelpLinkUriFormat, "source-generated-registration"));
 
     internal static readonly DiagnosticDescriptor InvalidResolveBy = new(
         id: "SSC004",
@@ -60,7 +60,7 @@ internal static class GeneratorDiagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: InvalidResolveByDescription,
-        helpLinkUri: string.Format(HelpLinkUriFormat, "source-generated-registration-aot-friendly"));
+        helpLinkUri: string.Format(HelpLinkUriFormat, "source-generated-registration"));
 
     private const string ServiceRegistrationMustBeSealedTitle = "Service registration type must be sealed";
     private const string ServiceRegistrationMustBeSealedDescription =
@@ -96,7 +96,7 @@ internal static class GeneratorDiagnostics
         helpLinkUri: string.Format(HelpLinkUriFormat, "service-registration"));
 
     internal static readonly DiagnosticDescriptor ServiceRegistrationMustImplementExecuteAsync = new(
-        id: "SSR008",
+        id: "SSC008",
         title: ServiceRegistrationMustImplementExecuteAsyncTitle,
         messageFormat: "Type '{0}' must implement ExecuteAsync(IServiceCollection[, TContext])",
         category: GeneratorConstants.DiagnosticCategory,
@@ -104,16 +104,4 @@ internal static class GeneratorDiagnostics
         isEnabledByDefault: true,
         description: ServiceRegistrationMustImplementExecuteAsyncDescription,
         helpLinkUri: string.Format(HelpLinkUriFormat, "service-registration"));
-
-    // TEMPORARY: re-instrumented to catch the persistent NRE. Will be removed once the
-    // offending access is identified.
-    internal static readonly DiagnosticDescriptor DebugDiagnostic = new(
-        id: "SSR999",
-        title: "Generator debug",
-        messageFormat: "{0}",
-        category: GeneratorConstants.DiagnosticCategory,
-        defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true,
-        description: "Temporary debug diagnostic to surface generator exceptions.",
-        helpLinkUri: string.Empty);
 }
