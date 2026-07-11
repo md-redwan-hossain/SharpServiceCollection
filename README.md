@@ -1,189 +1,401 @@
-| Branch | Status                                                                                                                      |
-|--------|-----------------------------------------------------------------------------------------------------------------------------|
-| main   | ![Dotnet 8](https://github.com/md-redwan-hossain/SharpServiceCollection/actions/workflows/dotnet.yml/badge.svg?branch=main) |
-
 # SharpServiceCollection
 
-Attribute-driven and source-generated helpers for `Microsoft.Extensions.DependencyInjection`.
+[![Build status](https://github.com/md-redwan-hossain/SharpServiceCollection/actions/workflows/dotnet.yml/badge.svg?branch=main)](https://github.com/md-redwan-hossain/SharpServiceCollection/actions/workflows/dotnet.yml)
 
-One NuGet package gives you:
+**SharpServiceCollection** is a lightweight C# package that provides a declarative, comipile-time and AOT-friendly way to work with `IServiceCollection`.
 
-1. **Attributed DI** — declare services with `[InjectableDependency]`, register via source generation or reflection
-2. **Service registration orchestration** — compose many projects’ DI setup from a host at compile time
+## Table of contents
 
----
+- [Installation](#installation)
+- [How it works](#how-it-works)
+- [Your first registration](#your-first-registration)
+  - [Register a class by itself](#register-a-class-by-itself)
+  - [Register by interface](#register-by-interface)
+  - [Register an explicit service type](#register-an-explicit-service-type)
+- [Registration options](#registration-options)
+  - [Lifetimes](#lifetimes)
+  - [Registration target](#registration-target)
+  - [Keys, enumerable services, and ordering](#keys-enumerable-services-and-ordering)
+- [Choose how services are discovered](#choose-how-services-are-discovered)
+  - [Source-generated registration](#source-generated-registration)
+  - [Reflection-based registration](#reflection-based-registration)
+- [Register services from multiple projects](#register-services-from-multiple-projects)
+  - [Create a module registration](#create-a-module-registration)
+  - [Enable the host project](#enable-the-host-project)
+  - [Use a registration context](#use-a-registration-context)
+- [Opt out of source generation](#opt-out-of-source-generation)
+- [Diagnostics](#diagnostics)
+- [Package contents](#package-contents)
 
 ## Installation
+
+Install **one** package. You do not need to install separate packages for the runtime library, dependency types, or source generator:
 
 ```bash
 dotnet add package SharpServiceCollection
 ```
 
-Or from [NuGet](https://www.nuget.org/packages/SharpServiceCollection).
+You can also install it from [NuGet](https://www.nuget.org/packages/SharpServiceCollection).
 
-The package includes the runtime library **and** the Roslyn source generator (under `analyzers/dotnet/cs`).
+The package contains:
 
----
+- The runtime library and public attributes
+- The dependency types used by the attributes
+- The Roslyn source generator under `analyzers/dotnet/cs`
 
-## Features at a glance
+The source generator runs automatically when you build a project that references the package.
 
-| Feature | When to use | Entry point |
-|---------|-------------|-------------|
-| Attributed DI (source-generated) | AOT / trim-friendly; known assemblies at compile time | `AddAttributedServices()` / `AddAttributedServicesFrom{Assembly}()` |
-| Attributed DI (reflection) | Runtime assembly scanning; plugins; gradual migration | `AddServicesFromCurrentAssembly()` / `AddServicesFromAssembly(...)` |
-| Service registration orchestration | Modular apps: each project owns DI; host wires them | `ExecuteServiceRegistrationsAsync()` |
+## How it works
 
-Typical modular app uses **both**: each project’s `ServiceRegistration` calls `AddAttributedServices()`, and the host calls `ExecuteServiceRegistrationsAsync()`.
+The basic workflow is:
 
----
+1. Install `SharpServiceCollection`.
+2. Add an `InjectableDependency` attribute to each service implementation.
+3. Call the generated `AddAttributedServices()` extension method.
+4. Resolve the service through the normal .NET dependency injection APIs.
 
-## Attributed dependency injection
-
-Annotate implementations with `InjectableDependency` or `InjectableDependency<T>`. The library maps them to the usual `Add*` / `TryAdd*` / keyed / enumerable APIs.
-
-### Attributes
+For example:
 
 ```csharp
-[InjectableDependency(InstanceLifetime lifetime, ResolveBy resolveBy)]
-[InjectableDependency<TService>(InstanceLifetime lifetime)]
+using Microsoft.Extensions.DependencyInjection;
+using SharpServiceCollection;
+using SharpServiceCollection.Attributes;
+using SharpServiceCollection.Enums;
+using SharpServiceCollection.Generated;
+
+public interface IEmailSender
+{
+    Task SendAsync(string address, string message);
+}
+
+[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.MatchingInterface)]
+public sealed class EmailSender : IEmailSender
+{
+    public Task SendAsync(string address, string message)
+    {
+        Console.WriteLine($"Sending to {address}: {message}");
+        return Task.CompletedTask;
+    }
+}
+
+var builder = WebApplication.CreateBuilder(args);
+
+// The source generator creates this method for the current assembly.
+builder.Services.AddAttributedServices();
+
+var app = builder.Build();
+app.MapGet("/email", async (IEmailSender sender) =>
+{
+    await sender.SendAsync("user@example.com", "Welcome!");
+    return Results.Ok();
+});
+
+app.Run();
 ```
 
-Optional properties on both: `TryAdd` (default `true`), `Key`, `Enumerable`, `Order` (default `0`).
+`EmailSender` is registered as `IEmailSender`, and its lifetime is scoped. The generated code uses the normal `Microsoft.Extensions.DependencyInjection` registration APIs; there is no runtime type scanning for source-generated registration.
 
-**`InstanceLifetime`:** `Singleton`, `Scoped`, `Transient`
+## Your first registration
 
-**`ResolveBy`:**
+### Register a class by itself
 
-| Value | Registers as |
-|-------|----------------|
-| `Self` | The concrete class |
-| `MatchingInterface` | `I{ClassName}` (e.g. `MyService` → `IMyService`) |
-| `ImplementedInterface` | Every implemented interface |
+Use `ResolveBy.Self` when consumers should resolve the concrete class:
 
-Use `InjectableDependency<T>` when you need an explicit service type without naming conventions.
+```csharp
+[InjectableDependency(InstanceLifetime.Transient, ResolveBy.Self)]
+public sealed class TokenGenerator
+{
+    public string Create() => Guid.NewGuid().ToString("N");
+}
+```
 
-### Registering attributed services
+This is equivalent to:
 
-#### Source-generated (compile-time, AOT-friendly)
+```csharp
+services.TryAddTransient<TokenGenerator>();
+```
 
-<a id="source-generated-service-registration"></a>
+### Register by interface
 
-The generator runs on every build of a consuming project. It emits:
+Use `ResolveBy.MatchingInterface` when the class follows the `I{ClassName}` naming convention:
 
-| Method | Visibility | Use |
-|--------|------------|-----|
-| `AddAttributedServices()` | **internal** | Same assembly only (e.g. inside that project’s `ServiceRegistration`) |
-| `AddAttributedServicesFrom{SanitisedAssemblyName}()` | **public** | Cross-assembly / host (avoids CS0121) |
+```csharp
+public interface IOrderService
+{
+    Task PlaceAsync(int orderId);
+}
 
-Example: assembly `My.Module.Application` → `AddAttributedServicesFromMyModuleApplication()`.
+[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.MatchingInterface)]
+public sealed class OrderService : IOrderService
+{
+    public Task PlaceAsync(int orderId) => Task.CompletedTask;
+}
+```
+
+This registers:
+
+```csharp
+services.TryAddScoped<IOrderService, OrderService>();
+```
+
+The class must implement the matching interface. For example, `OrderService` must implement `IOrderService`.
+
+### Register an explicit service type
+
+Use the generic attribute when the service type does not follow a naming convention:
+
+```csharp
+public interface IMessageHandler
+{
+    Task HandleAsync(string message);
+}
+
+[InjectableDependency<IMessageHandler>(InstanceLifetime.Singleton)]
+public sealed class WelcomeMessageHandler : IMessageHandler
+{
+    public Task HandleAsync(string message) => Task.CompletedTask;
+}
+```
+
+This registers `WelcomeMessageHandler` as `IMessageHandler`.
+
+## Registration options
+
+### Lifetimes
+
+`InstanceLifetime` supports the standard dependency injection lifetimes:
+
+| Lifetime | Behavior |
+|---|---|
+| `Singleton` | One instance for the application lifetime |
+| `Scoped` | One instance per service scope, such as an HTTP request |
+| `Transient` | A new instance each time the service is requested |
+
+Example:
+
+```csharp
+[InjectableDependency(InstanceLifetime.Singleton, ResolveBy.Self)]
+public sealed class ApplicationClock
+{
+    public DateTimeOffset Now => DateTimeOffset.UtcNow;
+}
+```
+
+### Registration target
+
+`ResolveBy` determines which service type is registered:
+
+| Value | Registers as | Example |
+|---|---|---|
+| `Self` | The concrete class | `TokenGenerator` |
+| `MatchingInterface` | `I{ClassName}` | `OrderService` → `IOrderService` |
+| `ImplementedInterface` | Every interface implemented by the class | `PaymentService` → `ICardPayment`, `IRefunds` |
+
+For example:
+
+```csharp
+[InjectableDependency(
+    InstanceLifetime.Scoped,
+    ResolveBy.ImplementedInterface)]
+public sealed class PaymentService : ICardPayment, IRefunds
+{
+    // Registered for both ICardPayment and IRefunds.
+}
+```
+
+### Keys, enumerable services, and ordering
+
+All registration attributes support these options:
+
+| Option | Default | Purpose |
+|---|---:|---|
+| `TryAdd` | `true` | Avoid replacing an existing registration when `true`; use the regular `Add*` API when `false` |
+| `Key` | `null` | Register a keyed service |
+| `Enumerable` | `false` | Add the implementation to an enumerable service collection |
+| `Order` | `0` | Control processing order when registrations compete |
+
+#### Keyed services
+
+```csharp
+[InjectableDependency<IMessageHandler>(
+    InstanceLifetime.Transient,
+    Key = "welcome")]
+public sealed class WelcomeMessageHandler : IMessageHandler
+{
+    public Task HandleAsync(string message) => Task.CompletedTask;
+}
+```
+
+The service can then be resolved using the standard keyed-service APIs:
+
+```csharp
+var handler = serviceProvider.GetRequiredKeyedService<IMessageHandler>("welcome");
+```
+
+#### Multiple implementations
+
+Set `Enumerable = true` when you want all matching implementations available through `IEnumerable<T>`:
+
+```csharp
+public interface IValidator<T>
+{
+    bool IsValid(T value);
+}
+
+public sealed record Order(int Id);
+
+[InjectableDependency<IValidator<Order>>(
+    InstanceLifetime.Singleton,
+    Enumerable = true)]
+public sealed class PaymentValidator : IValidator<Order>
+{
+}
+
+[InjectableDependency<IValidator<Order>>(
+    InstanceLifetime.Singleton,
+    Enumerable = true)]
+public sealed class AddressValidator : IValidator<Order>
+{
+}
+```
+
+Inject them together:
+
+```csharp
+public sealed class OrderService(IEnumerable<IValidator<Order>> validators)
+{
+    public bool IsValid(Order order) => validators.All(v => v.IsValid(order));
+}
+```
+
+`Enumerable = true` requires `TryAdd = true`.
+
+#### Duplicate registrations and `Order`
+
+Registrations are processed by `Order` ascending, followed by class name ascending.
+
+- With `TryAdd = true`, the first matching registration wins.
+- With `TryAdd = false`, the regular `Add*` method is used, so later registrations can replace the default service resolution.
+
+```csharp
+[InjectableDependency<IWorker>(InstanceLifetime.Scoped, Order = 1)]
+public sealed class PrimaryWorker : IWorker
+{
+}
+
+[InjectableDependency<IWorker>(InstanceLifetime.Scoped, Order = 2)]
+public sealed class BackupWorker : IWorker
+{
+}
+```
+
+## Choose how services are discovered
+
+### Source-generated registration
+
+Source generation is the recommended option when the assemblies are known at build time. It is fast, avoids runtime assembly scanning, and is a good fit for trimming and AOT scenarios.
+
+Add the attribute to your services, then call:
 
 ```csharp
 using SharpServiceCollection.Generated;
 
-// Same assembly
 services.AddAttributedServices();
-
-// From another assembly
-services.AddAttributedServicesFromMyModuleApplication();
 ```
 
-#### Reflection (runtime scanning)
+The generated method is `internal`, so it is intended for use inside the same assembly that contains the attributed services.
+
+When a host needs to register services from another assembly, the generator also creates a public method based on that assembly name:
+
+```csharp
+// For an assembly named My.Module.Application:
+services.AddAttributedServicesFrom_MyModuleApplication();
+```
+
+The complete method name follows this pattern:
+
+```text
+AddAttributedServicesFrom_{SanitizedAssemblyName}
+```
+
+For example:
+
+```text
+Assembly name:  My.Module.Application
+Generated call: services.AddAttributedServicesFrom_MyModuleApplication();
+```
+
+The generator uses the consuming project's `AssemblyName`, removes dots and other non-alphanumeric characters, and adds the `AddAttributedServicesFrom_` prefix. For example, the test project assembly `SharpServiceCollection.Tests` generates:
+
+```csharp
+services.AddAttributedServicesFrom_SharpServiceCollectionTests();
+```
+
+The generated method is public, so a host project can call the method generated in a referenced module assembly.
+
+### Reflection-based registration
+
+Use reflection when an assembly is only known at runtime, when you are loading plugins, or while migrating an existing application to source generation.
 
 ```csharp
 using SharpServiceCollection.Extensions;
 
 services.AddServicesFromCurrentAssembly();
-services.AddServicesFromAssembly(assembly);
-services.AddServicesFromAssemblyContaining<MyType>();
-services.AddServicesFromAssemblyContaining(typeof(MyType));
+services.AddServicesFromAssembly(pluginAssembly);
+services.AddServicesFromAssemblyContaining<PluginMarker>();
+services.AddServicesFromAssemblyContaining(typeof(PluginMarker));
 ```
 
-Use reflection when the assembly is only known at runtime, or while migrating to source generation.
+Reflection scans the selected assembly at runtime. It is more flexible than source generation, but source generation is usually preferable when the set of assemblies is known during the build.
 
-### Quick examples
+## Register services from multiple projects
 
-**Self**
+In a modular solution, each project can own its service registrations. A host project can then discover and execute those registrations through generated code.
+
+This is useful when your solution looks like this:
+
+```text
+MyApp.Api                 # host project
+MyApp.Orders              # feature module
+MyApp.Payments            # feature module
+```
+
+### Create a module registration
+
+Mark a sealed class with `[ServiceRegistrationItem]` and implement `IServiceRegistration`:
 
 ```csharp
-[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.Self)]
-public class MyService { }
-// → TryAddScoped<MyService>()
+using Microsoft.Extensions.DependencyInjection;
+using SharpServiceCollection.Attributes;
+using SharpServiceCollection.Generated;
+using SharpServiceCollection.Interfaces;
+
+[ServiceRegistrationItem]
+public sealed class OrdersRegistration : IServiceRegistration
+{
+    public Task RegisterAsync(IServiceCollection services)
+    {
+        services.AddAttributedServices();
+        services.AddSingleton<OrderNumberGenerator>();
+        return Task.CompletedTask;
+    }
+}
 ```
 
-**Matching interface**
+The generator discovers classes that:
 
-```csharp
-[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.MatchingInterface)]
-public class MyService : IMyService { }
-// → TryAddScoped<IMyService, MyService>()
-```
+- Have the `[ServiceRegistrationItem]` attribute
+- Are `sealed`
+- Implement `IServiceRegistration` or `IServiceRegistration<TContext>`
+- Provide the matching `RegisterAsync` method
 
-**Implemented interfaces**
+The class can have any name. It does not need to be named `ServiceRegistration`.
 
-```csharp
-[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.ImplementedInterface)]
-public class MyService : IFoo, IBar { }
-// → TryAddScoped for IFoo and IBar
-```
+`Order` controls execution order. Lower order values run first. Registrations with the same order are sorted by implementation type name.
 
-**Explicit type**
+### Enable the host project
 
-```csharp
-[InjectableDependency<IMyService>(InstanceLifetime.Scoped)]
-public class MyService : IMyService { }
-```
-
-**Keyed**
-
-```csharp
-[InjectableDependency<IMyService>(InstanceLifetime.Scoped, Key = "key")]
-public class MyService : IMyService { }
-```
-
-**Enumerable** (`Enumerable = true` requires `TryAdd = true`)
-
-```csharp
-[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.ImplementedInterface, Enumerable = true)]
-public class PluginA : IPlugin { }
-```
-
-**Multiple attributes on one class**
-
-```csharp
-[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.MatchingInterface)]
-[InjectableDependency(InstanceLifetime.Scoped, ResolveBy.Self, TryAdd = false)]
-public class MyService : IMyService { }
-```
-
-**`TryAdd = false`** uses `Add*` instead of `TryAdd*` (always registers).
-
-### Duplicate registrations and `Order`
-
-Implementations are processed by **`Order` ascending**, then class name ascending.
-
-| `TryAdd` | Winner |
-|----------|--------|
-| `true` (default) | First processed (lowest `Order`) |
-| `false` | Last processed (highest `Order`) |
-
-```csharp
-[InjectableDependency<IWorker>(InstanceLifetime.Scoped, Order = 1)]
-public class ZebraWorker : IWorker { }
-
-[InjectableDependency<IWorker>(InstanceLifetime.Scoped, Order = 2)]
-public class AlphaWorker : IWorker { }
-// TryAdd: ZebraWorker wins
-```
-
----
-
-## Service registration orchestration
-
-<a id="service-registration"></a>
-
-For solutions where **many projects** each own their DI setup, the host discovers sealed `ServiceRegistration` types in referenced assemblies and runs them at compile time — no runtime `GetTypes` / `Assembly.LoadFrom`.
-
-### Host project
+Set `ServiceRegistrationRoot` in the host project's `.csproj` file:
 
 ```xml
 <PropertyGroup>
@@ -191,100 +403,128 @@ For solutions where **many projects** each own their DI setup, the host discover
 </PropertyGroup>
 ```
 
+The host must reference the module projects or packages. Then execute the generated registrations during startup:
+
 ```csharp
 using SharpServiceCollection.Generated;
 
 var builder = WebApplication.CreateBuilder(args);
 
-await builder.Services.ExecuteServiceRegistrationsAsync();
-// or with an app-defined context:
-await builder.Services.ExecuteServiceRegistrationsAsync(context);
-```
-
-NuGet consumers get `ServiceRegistrationRoot` as a compiler-visible property automatically (`buildTransitive`). For a local `ProjectReference`, add:
-
-```xml
-<ItemGroup>
-  <CompilerVisibleProperty Include="ServiceRegistrationRoot" />
-</ItemGroup>
-```
-
-### Per-project `ServiceRegistration`
-
-Must be **`sealed`**, named exactly **`ServiceRegistration`**, and inherit one of the bases (enforced by diagnostics SSC005–SSC006).
-
-**Services only:**
-
-```csharp
-using SharpServiceCollection;
-
-public sealed class ServiceRegistration : ServiceRegistrationBase
-{
-    public override int Priority => 100;
-
-    public override Task ExecuteAsync(IServiceCollection services)
-    {
-        services.AddAttributedServices();
-        // DbContext, options, etc.
-        return Task.CompletedTask;
-    }
-}
-```
-
-**With required context** (app defines `T` — e.g. config + environment):
-
-```csharp
-public sealed record AppContext(IConfiguration Config, IHostEnvironment Env);
-
-public sealed class ServiceRegistration : ServiceRegistrationBase<AppContext>
-{
-    public override Task ExecuteAsync(IServiceCollection services, AppContext context)
-    {
-        services.AddAttributedServices();
-        return Task.CompletedTask;
-    }
-}
-```
-
-| Host call | Invokes |
-|-----------|---------|
-| `ExecuteServiceRegistrationsAsync()` | `ServiceRegistrationBase` only |
-| `ExecuteServiceRegistrationsAsync(ctx)` | `ServiceRegistrationBase<T>` where `T` matches `ctx` |
-
-Items are sorted by **`Priority` descending**, then instantiated and `ExecuteAsync` is called. Add a project reference to the host and rebuild to include a new registration.
-
----
-
-## End-to-end (ASP.NET Core)
-
-```csharp
-// Api.Host.csproj
-// <ServiceRegistrationRoot>true</ServiceRegistrationRoot>
-
-using SharpServiceCollection.Generated;
-
-var builder = WebApplication.CreateBuilder(args);
-
-await builder.Services.ExecuteServiceRegistrationsAsync(
-    new AppContext(builder.Configuration, builder.Environment));
+await builder.Services.ExecuteServiceRegistrationItemsAsync();
 
 var app = builder.Build();
-app.MapGet("/user/{id}", (IUserService users, int id) => users.GetUserInfo(id));
 app.Run();
 ```
 
-Each referenced module’s `ServiceRegistration.ExecuteAsync` typically calls `AddAttributedServices()` for that assembly’s `[InjectableDependency]` types.
+The source generator creates a small public aggregator in every module. The root project finds those aggregators through its project or package references and combines them into `ExecuteServiceRegistrationItemsAsync`.
 
----
+### Use a registration context
+
+Implement `IServiceRegistration<TContext>` when a module needs configuration or environment information:
+
+```csharp
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using SharpServiceCollection.Attributes;
+using SharpServiceCollection.Interfaces;
+
+public sealed record AppContext(
+    IConfiguration Configuration,
+    IHostEnvironment Environment);
+
+[ServiceRegistrationItem(Order = 20)]
+public sealed class PaymentsRegistration : IServiceRegistration<AppContext>
+{
+    public Task RegisterAsync(
+        IServiceCollection services,
+        AppContext context)
+    {
+        services.AddSingleton(context.Configuration);
+        return Task.CompletedTask;
+    }
+}
+```
+
+Pass the matching context from the host:
+
+```csharp
+var context = new AppContext(
+    builder.Configuration,
+    builder.Environment);
+
+await builder.Services.ExecuteServiceRegistrationItemsAsync(context);
+```
+
+| Host call | Executes |
+|---|---|
+| `ExecuteServiceRegistrationItemsAsync()` | Registrations implementing `IServiceRegistration` |
+| `ExecuteServiceRegistrationItemsAsync(context)` | Registrations implementing `IServiceRegistration<TContext>` where `TContext` matches |
+
+## Opt out of source generation
+
+The package contains two independent source generators. You can disable either one, or both, in a consuming project's `.csproj` file.
+
+### Disable attributed DI generation
+
+Set `DisableInjectableDependencyGenerator` to `true` when you want to use the reflection-based registration APIs instead of generated `AddAttributedServices()` methods:
+
+```xml
+<PropertyGroup>
+  <DisableInjectableDependencyGenerator>true</DisableInjectableDependencyGenerator>
+</PropertyGroup>
+```
+
+This disables generated attributed-service registration only. Reflection APIs such as `AddServicesFromAssembly(...)` remain available.
+
+### Disable service-registration orchestration
+
+Set `DisableServiceRegistrationGenerator` to `true` when you do not use `[ServiceRegistrationItem]` and `IServiceRegistration`:
+
+```xml
+<PropertyGroup>
+  <DisableServiceRegistrationGenerator>true</DisableServiceRegistrationGenerator>
+</PropertyGroup>
+```
+
+This disables generated service-registration aggregators and root methods such as `ExecuteServiceRegistrationItemsAsync(...)`.
+
+To disable both generators:
+
+```xml
+<PropertyGroup>
+  <DisableInjectableDependencyGenerator>true</DisableInjectableDependencyGenerator>
+  <DisableServiceRegistrationGenerator>true</DisableServiceRegistrationGenerator>
+</PropertyGroup>
+```
 
 ## Diagnostics
 
-| ID | Severity | Meaning |
-|----|----------|---------|
-| SSC001 | Error | `Enumerable=true` requires `TryAdd=true` |
-| SSC002 | Error | `ResolveBy.MatchingInterface` needs `I{ClassName}` |
-| SSC003 | Error | Invalid `InstanceLifetime` |
-| SSC004 | Error | Invalid `ResolveBy` |
+The source generator reports clear diagnostics when an attribute or registration class is invalid:
 
-| SSC005 | Error | That type must be `sealed` |
-| SSC006 | Error | `ServiceRegistration` needs an accessible parameterless constructor |
+| ID | Severity | Meaning |
+|---|---|---|
+| SSC001 | Error | `Enumerable = true` requires `TryAdd = true` |
+| SSC002 | Error | `ResolveBy.MatchingInterface` requires an `I{ClassName}` interface |
+| SSC003 | Error | Invalid `InstanceLifetime` value |
+| SSC004 | Error | Invalid `ResolveBy` value |
+| SSC005 | Error | A type marked with `[ServiceRegistrationItem]` must be `sealed` |
+| SSC006 | Error | A type marked with `[ServiceRegistrationItem]` must implement `IServiceRegistration` or `IServiceRegistration<TContext>` |
+
+Fix the reported source code and rebuild. The generator will run again automatically.
+
+## Package contents
+
+`SharpServiceCollection` is distributed as a single NuGet package:
+
+```text
+SharpServiceCollection.nupkg
+├── lib/netstandard2.0/
+│   ├── SharpServiceCollection.dll
+│   └── SharpServiceCollection.Dependencies.dll
+└── analyzers/dotnet/cs/
+    ├── SharpServiceCollection.Generators.dll
+    └── SharpServiceCollection.Dependencies.dll
+```
+
+The dependency assembly is included in the package so consumers can use the public attribute, enum, and interface types without installing another package. The generator copy is placed in the analyzer folder so it runs automatically during builds.

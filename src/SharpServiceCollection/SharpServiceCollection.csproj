@@ -5,6 +5,22 @@
         <ProjectReference Include="..\SharpServiceCollection.Generators\SharpServiceCollection.Generators.csproj" />
     </ItemGroup>
 
+    <!-- Bundle the supporting assemblies into this single consumer package. -->
+    <ItemGroup>
+        <None Include="..\SharpServiceCollection.Dependencies\bin\$(Configuration)\$(TargetFramework)\SharpServiceCollection.Dependencies.dll"
+              Pack="true"
+              PackagePath="lib\$(TargetFramework)"
+              Visible="false" />
+        <None Include="..\SharpServiceCollection.Generators\bin\$(Configuration)\$(TargetFramework)\SharpServiceCollection.Generators.dll"
+              Pack="true"
+              PackagePath="analyzers\dotnet\cs"
+              Visible="false" />
+        <None Include="..\SharpServiceCollection.Dependencies\bin\$(Configuration)\$(TargetFramework)\SharpServiceCollection.Dependencies.dll"
+              Pack="true"
+              PackagePath="analyzers\dotnet\cs"
+              Visible="false" />
+    </ItemGroup>
+
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>
         <LangVersion>latest</LangVersion>
