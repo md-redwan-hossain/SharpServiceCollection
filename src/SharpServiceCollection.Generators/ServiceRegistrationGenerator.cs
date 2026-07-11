@@ -11,12 +11,18 @@ namespace SharpServiceCollection.Generators;
 [Generator]
 public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
 {
+    private const string LibraryNamespaceName = "SharpServiceCollection";
+    private const string AttributesNamespaceName = "Attributes";
+    private const string InterfacesNamespaceName = "Interfaces";
+    private const string GeneratedSubnamespaceName = "Generated";
+
     private const string InterfaceName = nameof(IServiceRegistration);
     private const string AttributeName = nameof(ServiceRegistrationItemAttribute);
-    private const string AttributeMetadataName = "SharpServiceCollection.Attributes." + AttributeName;
+    private const string AttributeMetadataName =
+        LibraryNamespaceName + "." + AttributesNamespaceName + "." + AttributeName;
 
-    private const string AggregatorAttributeMetadataName =
-        "global::SharpServiceCollection.Attributes.ServiceRegistrationAggregatorAttribute";
+    private const string AggregatorAttributeName =
+        nameof(ServiceRegistrationAggregatorAttribute);
 
     private const string GeneratedFileName = "SharpServiceCollection.ServiceRegistration.g.cs";
     private const string AggregatorGeneratedFileName = "SharpServiceCollection.ServiceRegistration.Aggregator.g.cs";
@@ -31,7 +37,8 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
     private const string ServiceCollectionMetadataName =
         "global::Microsoft.Extensions.DependencyInjection.IServiceCollection";
 
-    private const string GeneratedNamespace = "SharpServiceCollection.Generated";
+    private const string GeneratedNamespace =
+        LibraryNamespaceName + "." + GeneratedSubnamespaceName;
     private const string AggregatorNamePrefix = "ServiceRegistrationAggregator_";
 
     private const string ServiceRegistrationMustBeSealedTitle = "Annotated class is not sealed";
@@ -230,8 +237,8 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         var interfacesNamespace = interfaceSymbol.ContainingNamespace;
         var libraryNamespace = interfacesNamespace.ContainingNamespace;
 
-        return interfacesNamespace.Name == "Interfaces" &&
-               libraryNamespace.Name == "SharpServiceCollection" &&
+        return interfacesNamespace.Name == InterfacesNamespaceName &&
+               libraryNamespace.Name == LibraryNamespaceName &&
                libraryNamespace.ContainingNamespace.IsGlobalNamespace;
     }
 
@@ -391,8 +398,18 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
     {
         foreach (var attribute in type.GetAttributes())
         {
-            if (attribute.AttributeClass?.ToDisplayString(
-                    SymbolDisplayFormat.FullyQualifiedFormat) == AggregatorAttributeMetadataName)
+            var attributeClass = attribute.AttributeClass;
+            if (attributeClass is null || attributeClass.Name != AggregatorAttributeName)
+            {
+                continue;
+            }
+
+            var attributesNamespace = attributeClass.ContainingNamespace;
+            var libraryNamespace = attributesNamespace.ContainingNamespace;
+
+            if (attributesNamespace.Name == AttributesNamespaceName &&
+                libraryNamespace.Name == LibraryNamespaceName &&
+                libraryNamespace.ContainingNamespace.IsGlobalNamespace)
             {
                 return true;
             }
