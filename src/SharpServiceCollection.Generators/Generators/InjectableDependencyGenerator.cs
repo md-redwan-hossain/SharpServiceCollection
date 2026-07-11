@@ -90,7 +90,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: EnumerableRequiresTryAddDescription,
-        helpLinkUri: string.Format(HelpLinkUriFormat, "source-generated-registration"));
+        helpLinkUri: string.Format(HelpLinkUriFormat, "source-generated-service-registration"));
 
     private static readonly DiagnosticDescriptor MatchingInterfaceMissing = new(
         id: DiagnosticIds.MatchingInterfaceMissing,
@@ -100,7 +100,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: MatchingInterfaceMissingDescription,
-        helpLinkUri: string.Format(HelpLinkUriFormat, "source-generated-registration"));
+        helpLinkUri: string.Format(HelpLinkUriFormat, "source-generated-service-registration"));
 
     private static readonly DiagnosticDescriptor InvalidLifetime = new(
         id: DiagnosticIds.InvalidLifetime,
@@ -110,7 +110,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: InvalidLifetimeDescription,
-        helpLinkUri: string.Format(HelpLinkUriFormat, "source-generated-registration"));
+        helpLinkUri: string.Format(HelpLinkUriFormat, "source-generated-service-registration"));
 
     private static readonly DiagnosticDescriptor InvalidResolveBy = new(
         id: DiagnosticIds.InvalidResolveBy,
@@ -120,7 +120,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: InvalidResolveByDescription,
-        helpLinkUri: string.Format(HelpLinkUriFormat, "source-generated-registration"));
+        helpLinkUri: string.Format(HelpLinkUriFormat, "source-generated-service-registration"));
 
     private static class DependencyInjection
     {
