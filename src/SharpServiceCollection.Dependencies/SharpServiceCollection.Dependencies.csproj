@@ -12,8 +12,8 @@
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
     </ItemGroup>
     
-      <ItemGroup>
-    <InternalsVisibleTo Include="SharpServiceCollection" />
-  </ItemGroup>
+    <ItemGroup>
+        <InternalsVisibleTo Include="SharpServiceCollection"/>
+    </ItemGroup>
 
 </Project>

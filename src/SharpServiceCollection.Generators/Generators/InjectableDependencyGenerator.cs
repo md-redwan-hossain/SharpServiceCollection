@@ -15,6 +15,8 @@ namespace SharpServiceCollection.Generators;
 public sealed class InjectableDependencyGenerator : IIncrementalGenerator
 {
     private const string RuntimeAssemblyName = "SharpServiceCollection";
+    private const string DisablePropertyName =
+        "build_property.DisableInjectableDependencyGenerator";
     private const string GeneratedFileName = "SharpServiceCollection.Generated.g.cs";
     private const string UnsupportedLifetimeMessage = "Unsupported lifetime";
     private const string InterfaceNamePrefix = "I";
@@ -165,6 +167,11 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
+        var isDisabled = context.AnalyzerConfigOptionsProvider
+            .Select(static (provider, _) =>
+                provider.GlobalOptions.TryGetValue(DisablePropertyName, out var value) &&
+                string.Equals(value, "true", StringComparison.OrdinalIgnoreCase));
+
         var nonGenericStream = context.SyntaxProvider
             .ForAttributeWithMetadataName(
                 NonGenericAttributeMetadataName,
@@ -189,14 +196,23 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
             .Combine(genericStream.Collect().WithTrackingName(TrackingNames.CollectGeneric))
             .WithTrackingName(TrackingNames.CombineStreams)
             .Combine(assemblyName)
-            .WithTrackingName(TrackingNames.CombineAssembly);
+            .WithTrackingName(TrackingNames.CombineAssembly)
+            .Combine(isDisabled);
 
         context.RegisterSourceOutput(combined,
-            static (spc, source) => EmitGeneratedCode(
-                spc,
-                source.Left.Left,
-                source.Left.Right,
-                source.Right));
+            static (spc, source) =>
+            {
+                if (source.Right)
+                {
+                    return;
+                }
+
+                EmitGeneratedCode(
+                    spc,
+                    source.Left.Left.Left,
+                    source.Left.Left.Right,
+                    source.Left.Right);
+            });
     }
 
     private static TypeRegistrationResult AnalyzeClass(GeneratorAttributeSyntaxContext ctx)

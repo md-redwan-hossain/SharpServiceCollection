@@ -13,6 +13,8 @@ namespace SharpServiceCollection.Generators;
 public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
 {
     private const string LibraryNamespaceName = "SharpServiceCollection";
+    private const string DisablePropertyName =
+        "build_property.DisableServiceRegistrationGenerator";
     private const string AttributesNamespaceName = "Attributes";
     private const string InterfacesNamespaceName = "Interfaces";
     private const string GeneratedSubnamespaceName = "Generated";
@@ -77,6 +79,11 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
+        var isDisabled = context.AnalyzerConfigOptionsProvider
+            .Select(static (provider, _) =>
+                provider.GlobalOptions.TryGetValue(DisablePropertyName, out var value) &&
+                string.Equals(value, "true", StringComparison.OrdinalIgnoreCase));
+
         var analyzedCandidates = context.SyntaxProvider
             .ForAttributeWithMetadataName(
                 AttributeMetadataName,
@@ -91,13 +98,23 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
 
         // Every project emits its own small public aggregator. This makes its
         // registrations visible as metadata to a referencing root project.
-        var projectSource = context.CompilationProvider.Combine(collectedCandidates);
+        var projectSource = context.CompilationProvider
+            .Combine(collectedCandidates)
+            .Combine(isDisabled);
         context.RegisterSourceOutput(
             projectSource,
-            static (spc, input) => GenerateProjectAggregator(
-                spc,
-                input.Left.AssemblyName,
-                input.Right));
+            static (spc, input) =>
+            {
+                if (input.Right)
+                {
+                    return;
+                }
+
+                GenerateProjectAggregator(
+                    spc,
+                    input.Left.Left.AssemblyName,
+                    input.Left.Right);
+            });
 
         var isRoot = context.AnalyzerConfigOptionsProvider
             .Select(static (provider, _) =>
@@ -108,21 +125,22 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
 
         var rootSource = context.CompilationProvider
             .Combine(collectedCandidates)
-            .Combine(isRoot);
+            .Combine(isRoot)
+            .Combine(isDisabled);
 
         context.RegisterSourceOutput(
             rootSource,
             static (spc, input) =>
             {
-                if (!input.Right)
+                if (input.Right || !input.Left.Right)
                 {
                     return;
                 }
 
                 GenerateRootExtensions(
                     spc,
-                    input.Left.Left,
-                    input.Left.Right);
+                    input.Left.Left.Left,
+                    input.Left.Left.Right);
             });
     }
 
