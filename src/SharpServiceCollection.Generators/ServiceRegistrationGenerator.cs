@@ -65,23 +65,28 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         description: ServiceRegistrationMustImplementInterfaceDescription,
         helpLinkUri: string.Format(SharedConsts.HelpLinkUriFormat, "service-registration"));
 
-    private readonly record struct RegistrationDescriptor(
-        string ImplementationTypeName,
-        ITypeSymbol? ContextType,
-        string? ContextTypeName,
-        uint Order);
-
-    private readonly record struct RegistrationAnalysis(
-        ImmutableArray<RegistrationDescriptor> Descriptors,
-        ImmutableArray<Diagnostic> Diagnostics)
+    private readonly record struct RegistrationDescriptor
     {
+        public required string ImplementationTypeName { get; init; }
+        public required ITypeSymbol? ContextType { get; init; }
+        public required string? ContextTypeName { get; init; }
+        public required uint Order { get; init; }
+    }
+
+    private readonly record struct RegistrationAnalysis
+    {
+        public required ImmutableArray<RegistrationDescriptor> Descriptors { get; init; }
+        public required ImmutableArray<Diagnostic> Diagnostics { get; init; }
+
         public bool HasDescriptors => !Descriptors.IsDefaultOrEmpty;
     }
 
-    private readonly record struct AggregatorMethod(
-        string AggregatorTypeName,
-        string? ContextTypeName,
-        string SortKey);
+    private readonly record struct AggregatorMethod
+    {
+        public required string AggregatorTypeName { get; init; }
+        public required string? ContextTypeName { get; init; }
+        public required string SortKey { get; init; }
+    }
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -176,7 +181,11 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
                     classSymbol.Name));
             }
 
-            return new RegistrationAnalysis([], diagnostics.ToImmutable());
+            return new RegistrationAnalysis
+            {
+                Descriptors = [],
+                Diagnostics = diagnostics.ToImmutable()
+            };
         }
 
         var implementationTypeName = classSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
@@ -195,14 +204,20 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
                 : null;
             var contextTypeName = contextType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
-            descriptors.Add(new RegistrationDescriptor(
-                implementationTypeName,
-                contextType,
-                contextTypeName,
-                order));
+            descriptors.Add(new RegistrationDescriptor
+            {
+                ImplementationTypeName = implementationTypeName,
+                ContextType = contextType,
+                ContextTypeName = contextTypeName,
+                Order = order
+            });
         }
 
-        return new RegistrationAnalysis(descriptors.ToImmutable(), []);
+        return new RegistrationAnalysis
+        {
+            Descriptors = descriptors.ToImmutable(),
+            Diagnostics = []
+        }; 
     }
 
     private static bool IsServiceRegistrationInterface(INamedTypeSymbol interfaceSymbol)
@@ -410,10 +425,12 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
                 ? registrationMethod.Parameters[1].Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
                 : null;
 
-            methods.Add(new AggregatorMethod(
-                aggregatorTypeName,
-                contextTypeName,
-                aggregatorTypeName + "." + contextTypeName));
+            methods.Add(new AggregatorMethod
+            {
+                AggregatorTypeName = aggregatorTypeName,
+                ContextTypeName = contextTypeName,
+                SortKey = aggregatorTypeName + "." + contextTypeName
+            });
         }
     }
 
@@ -463,7 +480,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
             var contextTypeName = descriptor.ContextTypeName ?? string.Empty;
             if (!groups.TryGetValue(contextTypeName, out var calls))
             {
-                calls = new List<string>();
+                calls = [];
                 groups.Add(contextTypeName, calls);
             }
 
@@ -478,7 +495,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
             var contextTypeName = aggregator.ContextTypeName ?? string.Empty;
             if (!groups.TryGetValue(contextTypeName, out var calls))
             {
-                calls = new List<string>();
+                calls = [];
                 groups.Add(contextTypeName, calls);
             }
 
@@ -521,7 +538,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
             var contextTypeName = descriptor.ContextTypeName ?? string.Empty;
             if (!groups.TryGetValue(contextTypeName, out var registrations))
             {
-                registrations = new List<RegistrationDescriptor>();
+                registrations = [];
                 groups.Add(contextTypeName, registrations);
             }
 
