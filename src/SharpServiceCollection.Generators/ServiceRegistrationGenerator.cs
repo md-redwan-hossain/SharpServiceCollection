@@ -91,7 +91,16 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
     private readonly record struct AggregatorMethod
     {
         public required string AggregatorTypeName { get; init; }
+        public required string MethodName { get; init; }
         public required string? ContextTypeName { get; init; }
+        public required uint Order { get; init; }
+        public required string SortKey { get; init; }
+    }
+
+    private readonly record struct RootRegistrationCall
+    {
+        public required string Call { get; init; }
+        public required uint Order { get; init; }
         public required string SortKey { get; init; }
     }
 
@@ -424,14 +433,15 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
     {
         var aggregatorTypeName = aggregator.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
-        foreach (var method in aggregator.GetMembers(RegisterMethodName))
+        foreach (var member in aggregator.GetMembers())
         {
-            if (method is not IMethodSymbol
+            if (member is not IMethodSymbol
                 {
                     IsStatic: true,
                     DeclaredAccessibility: Accessibility.Public,
                     Parameters.Length: 1 or 2
                 } registrationMethod ||
+                !TryGetOrder(registrationMethod.Name, out var order) ||
                 registrationMethod.Parameters[0].Type.ToDisplayString(
                     SymbolDisplayFormat.FullyQualifiedFormat) != ServiceCollectionMetadataName)
             {
@@ -445,10 +455,30 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
             methods.Add(new AggregatorMethod
             {
                 AggregatorTypeName = aggregatorTypeName,
+                MethodName = registrationMethod.Name,
                 ContextTypeName = contextTypeName,
-                SortKey = aggregatorTypeName + "." + contextTypeName
+                Order = order,
+                SortKey = $"{aggregatorTypeName}.{registrationMethod.Name}"
             });
         }
+    }
+
+    private static bool TryGetOrder(string methodName, out uint order)
+    {
+        const string prefix = RegisterMethodName + "_";
+        if (!methodName.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            order = 0;
+            return false;
+        }
+
+        var orderStart = prefix.Length;
+        var orderEnd = methodName.IndexOf('_', orderStart);
+        var orderText = orderEnd < 0
+            ? methodName.Substring(orderStart)
+            : methodName.Substring(orderStart, orderEnd - orderStart);
+
+        return uint.TryParse(orderText, out order);
     }
 
     private static int CompareDescriptors(
@@ -490,7 +520,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         IReadOnlyList<RegistrationDescriptor> localDescriptors,
         IReadOnlyList<AggregatorMethod> aggregators)
     {
-        var groups = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        var groups = new Dictionary<string, List<RootRegistrationCall>>(StringComparer.Ordinal);
 
         foreach (var descriptor in localDescriptors)
         {
@@ -504,7 +534,12 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
             var call = descriptor.ContextTypeName is null
                 ? $"        await new {descriptor.ImplementationTypeName}().RegisterAsync(services);"
                 : $"        await new {descriptor.ImplementationTypeName}().RegisterAsync(services, context);";
-            calls.Add(call);
+            calls.Add(new RootRegistrationCall
+            {
+                Call = call,
+                Order = descriptor.Order,
+                SortKey = descriptor.ImplementationTypeName
+            });
         }
 
         foreach (var aggregator in aggregators)
@@ -517,12 +552,22 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
             }
 
             var call = aggregator.ContextTypeName is null
-                ? $"        await {aggregator.AggregatorTypeName}.RegisterAsync(services);"
-                : $"        await {aggregator.AggregatorTypeName}.RegisterAsync(services, context);";
-            calls.Add(call);
+                ? $"        await {aggregator.AggregatorTypeName}.{aggregator.MethodName}(services);"
+                : $"        await {aggregator.AggregatorTypeName}.{aggregator.MethodName}(services, context);";
+            calls.Add(new RootRegistrationCall
+            {
+                Call = call,
+                Order = aggregator.Order,
+                SortKey = aggregator.SortKey
+            });
         }
 
-        var orderedGroups = new List<KeyValuePair<string, List<string>>>(groups);
+        foreach (var calls in groups.Values)
+        {
+            calls.Sort(CompareRootRegistrationCalls);
+        }
+
+        var orderedGroups = new List<KeyValuePair<string, List<RootRegistrationCall>>>(groups);
         orderedGroups.Sort(static (left, right) => StringComparer.Ordinal.Compare(left.Key, right.Key));
 
         var builder = new StringBuilder(1024);
@@ -548,43 +593,29 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         StringBuilder builder,
         IReadOnlyList<RegistrationDescriptor> descriptors)
     {
-        var groups = new Dictionary<string, List<RegistrationDescriptor>>(StringComparer.Ordinal);
-
-        foreach (var descriptor in descriptors)
+        for (var index = 0; index < descriptors.Count; index++)
         {
-            var contextTypeName = descriptor.ContextTypeName ?? string.Empty;
-            if (!groups.TryGetValue(contextTypeName, out var registrations))
-            {
-                registrations = [];
-                groups.Add(contextTypeName, registrations);
-            }
-
-            registrations.Add(descriptor);
-        }
-
-        var orderedGroups = new List<KeyValuePair<string, List<RegistrationDescriptor>>>(groups);
-        orderedGroups.Sort(static (left, right) => StringComparer.Ordinal.Compare(left.Key, right.Key));
-
-        foreach (var group in orderedGroups)
-        {
-            var contextTypeName = group.Key.Length == 0 ? null : group.Key;
-            AppendAggregatorMethod(builder, contextTypeName, group.Value);
+            var descriptor = descriptors[index];
+            var methodName = RegisterMethodName + "_" + descriptor.Order + "_" + index;
+            AppendAggregatorMethod(builder, methodName, descriptor);
         }
     }
 
     private static void AppendAggregatorMethod(
         StringBuilder builder,
-        string? contextTypeName,
-        IReadOnlyList<RegistrationDescriptor> registrations)
+        string methodName,
+        RegistrationDescriptor registration)
     {
         builder.Append("    public static async Task<")
             .Append(ServiceCollectionType)
-            .AppendLine("> RegisterAsync(");
+            .Append("> ")
+            .Append(methodName)
+            .AppendLine("(");
         builder.Append("        ").Append(ServiceCollectionType).AppendLine(" services,");
 
-        if (contextTypeName is not null)
+        if (registration.ContextTypeName is not null)
         {
-            builder.Append("        ").Append(contextTypeName).AppendLine(" context)");
+            builder.Append("        ").Append(registration.ContextTypeName).AppendLine(" context)");
         }
         else
         {
@@ -593,24 +624,32 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         }
 
         builder.AppendLine("    {");
-        foreach (var registration in registrations)
-        {
-            builder.Append("        await new ")
-                .Append(registration.ImplementationTypeName)
-                .AppendLine(contextTypeName is null
-                    ? "().RegisterAsync(services);"
-                    : "().RegisterAsync(services, context);");
-        }
+        builder.Append("        await new ")
+            .Append(registration.ImplementationTypeName)
+            .AppendLine(registration.ContextTypeName is null
+                ? "().RegisterAsync(services);"
+                : "().RegisterAsync(services, context);");
 
         builder.AppendLine("        return services;");
         builder.AppendLine("    }");
         builder.AppendLine();
     }
 
+    private static int CompareRootRegistrationCalls(
+        RootRegistrationCall left,
+        RootRegistrationCall right)
+    {
+        var orderComparison = left.Order.CompareTo(right.Order);
+
+        return orderComparison != 0
+            ? orderComparison
+            : StringComparer.Ordinal.Compare(left.SortKey, right.SortKey);
+    }
+
     private static void AppendRootMethod(
         StringBuilder builder,
         string contextTypeName,
-        IReadOnlyList<string> calls)
+        IReadOnlyList<RootRegistrationCall> calls)
     {
         builder.Append("    public static async Task<")
             .Append(ServiceCollectionType)
@@ -630,7 +669,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         builder.AppendLine("    {");
         foreach (var call in calls)
         {
-            builder.AppendLine(call);
+            builder.AppendLine(call.Call);
         }
 
         builder.AppendLine("        return services;");
