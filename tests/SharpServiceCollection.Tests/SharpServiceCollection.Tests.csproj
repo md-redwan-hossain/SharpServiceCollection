@@ -6,29 +6,28 @@
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
         <IsTestProject>true</IsTestProject>
-        <ServiceRegistrationRoot>true</ServiceRegistrationRoot>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="coverlet.collector">
-          <PrivateAssets>all</PrivateAssets>
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
-        <PackageReference Include="Microsoft.NET.Test.Sdk" />
-        <PackageReference Include="Shouldly" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection"/>
+        <PackageReference Include="Microsoft.NET.Test.Sdk"/>
+        <PackageReference Include="Shouldly"/>
         <PackageReference Include="xunit.runner.visualstudio">
-          <PrivateAssets>all</PrivateAssets>
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="xunit.v3" />
+        <PackageReference Include="xunit.v3"/>
     </ItemGroup>
-    
+
     <ItemGroup>
-      <ProjectReference Include="..\..\src\SharpServiceCollection\SharpServiceCollection.csproj" />
-      <ProjectReference Include="..\..\src\SharpServiceCollection.SourceGenerator\SharpServiceCollection.SourceGenerator.csproj"
-                        OutputItemType="Analyzer"
-                        ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\..\src\SharpServiceCollection\SharpServiceCollection.csproj"/>
+        <ProjectReference Include="..\..\src\SharpServiceCollection.SourceGenerator\SharpServiceCollection.SourceGenerator.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="false"/>
     </ItemGroup>
 
 </Project>

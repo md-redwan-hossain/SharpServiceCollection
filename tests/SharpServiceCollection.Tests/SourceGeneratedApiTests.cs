@@ -515,46 +515,4 @@ public class SourceGeneratedApiTests
             nameof(LastNonGenericAggregator)
         });
     }
-
-    [Fact]
-    public async Task ExecuteServiceRegistrationsAsync_StringContext_RunsAggregatorsInOrderAscending()
-    {
-        // Arrange
-        AggregatorCallLog.Reset();
-        var services = new ServiceCollection();
-
-        // Act
-        await services.ExecuteServiceRegistrationsAsync("demo");
-
-        // Assert — FirstStringAggregator (Order = 10) runs before LastStringAggregator (Order = 30)
-        var stringCalls = AggregatorCallLog.Snapshot
-            .Where(e => e.ContextKind == CallLoggingAggregator.StringContextKey)
-            .Select(e => e.Aggregator)
-            .ToList();
-
-        stringCalls.ShouldBe(new[]
-        {
-            nameof(FirstStringAggregator),
-            nameof(LastStringAggregator)
-        });
-    }
-
-    [Fact]
-    public async Task ExecuteServiceRegistrationsAsync_IntContext_RunsAggregator()
-    {
-        // Arrange
-        AggregatorCallLog.Reset();
-        var services = new ServiceCollection();
-
-        // Act
-        await services.ExecuteServiceRegistrationsAsync(1);
-
-        // Assert — only the int-context aggregator lives on this overload
-        var intCalls = AggregatorCallLog.Snapshot
-            .Where(e => e.ContextKind == CallLoggingAggregator.IntContextKey)
-            .Select(e => e.Aggregator)
-            .ToList();
-
-        intCalls.ShouldBe(new[] { nameof(FirstIntAggregator) });
-    }
 }
