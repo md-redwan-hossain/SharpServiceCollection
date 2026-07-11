@@ -18,3 +18,4 @@ node_modules
 **/.fuse*
 **/*.sqlite3
 **/*puku
+**/*nupkg

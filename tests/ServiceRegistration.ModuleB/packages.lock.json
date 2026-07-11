@@ -5,8 +5,12 @@
       "sharpservicecollection": {
         "type": "Project",
         "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.9, )"
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.9, )",
+          "SharpServiceCollection.SourceGenerator": "[1.0.0, )"
         }
+      },
+      "sharpservicecollection.sourcegenerator": {
+        "type": "Project"
       },
       "Microsoft.Extensions.DependencyInjection.Abstractions": {
         "type": "CentralTransitive",

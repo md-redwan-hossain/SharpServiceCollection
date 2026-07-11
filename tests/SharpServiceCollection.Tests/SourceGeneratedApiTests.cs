@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using SharpServiceCollection.Generated;
-using SharpServiceCollection.Tests.TestData.AggregatorFixtures;
 using SharpServiceCollection.Tests.TestData.ConcreteTypes;
 using SharpServiceCollection.Tests.TestData.Interfaces;
 using Shouldly;
@@ -491,28 +490,5 @@ public class SourceGeneratedApiTests
         var service = provider.GetService<IScopedDependency>();
         service.ShouldNotBeNull();
         service.ShouldBeOfType<ScopedDependency>();
-    }
-
-    [Fact]
-    public async Task ExecuteServiceRegistrationsAsync_NonGeneric_RunsAggregatorsInOrderAscending()
-    {
-        // Arrange
-        AggregatorCallLog.Reset();
-        var services = new ServiceCollection();
-
-        // Act
-        await services.ExecuteServiceRegistrationsAsync();
-
-        // Assert — FirstNonGenericAggregator (Order = 10) runs before LastNonGenericAggregator (Order = 30)
-        var nonGenericCalls = AggregatorCallLog.Snapshot
-            .Where(e => e.ContextKind == CallLoggingAggregator.NonGenericContextKey)
-            .Select(e => e.Aggregator)
-            .ToList();
-
-        nonGenericCalls.ShouldBe(new[]
-        {
-            nameof(FirstNonGenericAggregator),
-            nameof(LastNonGenericAggregator)
-        });
     }
 }

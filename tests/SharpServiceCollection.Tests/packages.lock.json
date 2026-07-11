@@ -215,35 +215,15 @@
           "xunit.v3.runner.common": "[3.2.2]"
         }
       },
-      "serviceregistration.modulea": {
-        "type": "Project",
-        "dependencies": {
-          "ServiceRegistration.TestShared": "[1.0.0, )",
-          "SharpServiceCollection": "[1.0.0, )"
-        }
-      },
-      "serviceregistration.moduleb": {
-        "type": "Project",
-        "dependencies": {
-          "ServiceRegistration.TestShared": "[1.0.0, )",
-          "SharpServiceCollection": "[1.0.0, )"
-        }
-      },
-      "serviceregistration.modulegeneric": {
-        "type": "Project",
-        "dependencies": {
-          "ServiceRegistration.TestShared": "[1.0.0, )",
-          "SharpServiceCollection": "[1.0.0, )"
-        }
-      },
-      "serviceregistration.testshared": {
-        "type": "Project"
-      },
       "sharpservicecollection": {
         "type": "Project",
         "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.9, )"
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.9, )",
+          "SharpServiceCollection.SourceGenerator": "[1.0.0, )"
         }
+      },
+      "sharpservicecollection.sourcegenerator": {
+        "type": "Project"
       },
       "Microsoft.Extensions.DependencyInjection.Abstractions": {
         "type": "CentralTransitive",
