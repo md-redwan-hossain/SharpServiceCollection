@@ -11,10 +11,9 @@
 
     <ItemGroup>
         <!--
-            Source generator reads MSBuild properties via AnalyzerConfigOptionsProvider
-            (keys prefixed with `build_property.`). The buildTransitive props file wires this
-            up for NuGet consumers; for local <ProjectReference> usage we have to declare it
-            here so the generator sees ServiceRegistrationRoot=true in TrialWebApi.
+            Surfaces the MSBuild `<ServiceRegistrationRoot>` property to Roslyn
+            as a `[ServiceRegistrationRoot]` assembly attribute so the source
+            generator can react to it without any project graph plumbing.
         -->
         <CompilerVisibleProperty Include="ServiceRegistrationRoot" />
     </ItemGroup>

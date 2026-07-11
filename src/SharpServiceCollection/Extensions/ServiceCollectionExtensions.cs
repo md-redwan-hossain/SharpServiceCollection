@@ -15,17 +15,17 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddServicesFromAssemblyContaining<T>(this IServiceCollection services)
     {
-        return AddServicesFromAssembly(services, typeof(T).Assembly);
+        return services.AddServicesFromAssembly(typeof(T).Assembly);
     }
 
     public static IServiceCollection AddServicesFromAssemblyContaining(this IServiceCollection services, Type type)
     {
-        return AddServicesFromAssembly(services, type.Assembly);
+        return services.AddServicesFromAssembly(type.Assembly);
     }
 
     public static IServiceCollection AddServicesFromCurrentAssembly(this IServiceCollection services)
     {
-        return AddServicesFromAssembly(services, Assembly.GetCallingAssembly());
+        return services.AddServicesFromAssembly(Assembly.GetCallingAssembly());
     }
 
     public static IServiceCollection AddServicesFromAssembly(this IServiceCollection services,

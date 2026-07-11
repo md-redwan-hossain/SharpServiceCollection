@@ -1,10 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
-        <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
-        <ServiceRegistrationRoot>true</ServiceRegistrationRoot>
+        <Nullable>enable</Nullable>
     </PropertyGroup>
 
     <ItemGroup>
@@ -12,8 +11,6 @@
         <ProjectReference Include="..\..\src\SharpServiceCollection.SourceGenerator\SharpServiceCollection.SourceGenerator.csproj"
                           OutputItemType="Analyzer"
                           ReferenceOutputAssembly="false"/>
-        <ProjectReference Include="..\ServiceRegistration.ModuleA\ServiceRegistration.ModuleA.csproj" />
-        <ProjectReference Include="..\ServiceRegistration.ModuleB\ServiceRegistration.ModuleB.csproj" />
     </ItemGroup>
 
 </Project>

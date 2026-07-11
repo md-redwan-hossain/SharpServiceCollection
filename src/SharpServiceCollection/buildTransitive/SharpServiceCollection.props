@@ -1,5 +1,24 @@
 <Project>
-  <ItemGroup>
-    <CompilerVisibleProperty Include="ServiceRegistrationRoot" />
-  </ItemGroup>
+
+    <!--
+        Consumers opt in to source-generated `ExecuteServiceRegistrationsAsync(...)`
+        extensions by setting:
+
+            <PropertyGroup>
+                <ServiceRegistrationRoot>true</ServiceRegistrationRoot>
+            </PropertyGroup>
+
+        The `CompilerVisibleProperty` element below tells Roslyn to surface the
+        MSBuild property as a `[ServiceRegistrationRoot]` attribute on the
+        consuming assembly. The source generator then scans the assembly's
+        attribute metadata (no project graph plumbing required) and emits the
+        extension methods for any class annotated with `[ServiceRegistration]`
+        or `[ServiceRegistration<T>]`.
+
+        `GeneratorVisible` makes the property visible to source generators.
+    -->
+    <ItemGroup>
+        <CompilerVisibleProperty Include="ServiceRegistrationRoot" />
+    </ItemGroup>
+
 </Project>

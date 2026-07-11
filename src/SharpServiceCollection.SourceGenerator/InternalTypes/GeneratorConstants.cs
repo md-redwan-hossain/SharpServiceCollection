@@ -8,18 +8,43 @@ internal static class GeneratorConstants
     internal const string InterfaceNamePrefix = "I";
     internal const string UnsupportedLifetimeMessage = "Unsupported lifetime";
 
+    // Tracking names for every pipeline stage. Centralised so a rename touches
+    // one place instead of every WithTrackingName call site. Each entry is the
+    // full string passed to `WithTrackingName(...)`; consumers reference these
+    // via `using static` so call sites stay short.
+    internal static class TrackingNames
+    {
+        // ServiceRegistrationGenerator
+        internal const string ServiceRegistrationNonGeneric = "ServiceRegistration.NonGeneric";
+        internal const string ServiceRegistrationGeneric = "ServiceRegistration.Generic";
+        internal const string ServiceRegistrationCollectDiagnostics = "ServiceRegistration.CollectDiagnostics";
+        internal const string ServiceRegistrationCombineCompilation = "ServiceRegistration.CombineCompilation";
+
+        // InjectableDependencyGenerator
+        internal const string InjectableDependencyNonGeneric = "InjectableDependency.NonGeneric";
+        internal const string InjectableDependencyGeneric = "InjectableDependency.Generic";
+        internal const string InjectableDependencyCollectNonGeneric = "InjectableDependency.CollectNonGeneric";
+        internal const string InjectableDependencyCollectGeneric = "InjectableDependency.CollectGeneric";
+        internal const string InjectableDependencyCombineStreams = "InjectableDependency.CombineStreams";
+        internal const string InjectableDependencyCombineAssembly = "InjectableDependency.CombineAssembly";
+    }
+
     internal static class AttributeMetadata
     {
         internal const string Name = "InjectableDependencyAttribute";
+        internal const string ServiceRegistrationName = "ServiceRegistrationAttribute";
         internal const string Namespace = "SharpServiceCollection.Attributes";
+        internal const string ServiceRegistrationMetadataName = Namespace + "." + ServiceRegistrationName;
+        internal const string ServiceRegistrationGenericMetadataName = Namespace + "." + ServiceRegistrationName + "`1";
+        internal const string ServiceRegistrationRootMetadataName = Namespace + "." + "ServiceRegistrationRootAttribute";
     }
 
     internal static class AttributeProperties
     {
-        internal const string TryAdd = nameof(RegistrationModel.TryAdd);
-        internal const string Enumerable = nameof(RegistrationModel.Enumerable);
-        internal const string Key = nameof(RegistrationModel.Key);
-        internal const string Order = nameof(RegistrationModel.Order);
+        internal const string TryAdd = "TryAdd";
+        internal const string Enumerable = "Enumerable";
+        internal const string Key = "Key";
+        internal const string Order = "Order";
     }
 
     internal static class GeneratedCode
@@ -32,16 +57,10 @@ internal static class GeneratorConstants
 
     internal static class ServiceRegistration
     {
-        internal const string ClassName = "ServiceRegistration";
-        internal const string BaseTypeName = "ServiceRegistrationBase";
-        internal const string BaseTypeNamespace = "SharpServiceCollection";
-        internal const string BaseTypeMetadataName = BaseTypeNamespace + "." + BaseTypeName;
         internal const string ExecuteMethodName = "ExecuteAsync";
         internal const string HostMethodName = "ExecuteServiceRegistrationsAsync";
         internal const string GeneratedFileName = "SharpServiceCollection.ServiceRegistration.g.cs";
         internal const string ExtensionsClassName = "GeneratedServiceRegistrationExtensions";
-        internal const string MsBuildPropertyName = "ServiceRegistrationRoot";
-        internal const string MsBuildPropertyKey = "build_property." + MsBuildPropertyName;
     }
 
     internal static class DependencyInjection

@@ -4,9 +4,11 @@
     <Project Path="src/SharpServiceCollection.SourceGenerator/SharpServiceCollection.SourceGenerator.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/SharpServiceCollection.Tests/SharpServiceCollection.Tests.csproj" />
     <Project Path="tests/ServiceRegistration.ModuleA/ServiceRegistration.ModuleA.csproj" />
     <Project Path="tests/ServiceRegistration.ModuleB/ServiceRegistration.ModuleB.csproj" />
+    <Project Path="tests/SharpServiceCollection.Tests/SharpServiceCollection.Tests.csproj" />
+<!--    <Project Path="tests/ServiceRegistration.ModuleA/ServiceRegistration.ModuleA.csproj" />-->
+<!--    <Project Path="tests/ServiceRegistration.ModuleB/ServiceRegistration.ModuleB.csproj" />-->
     <Project Path="tests/TrialWebApi/TrialWebApi.csproj" />
   </Folder>
 </Solution>

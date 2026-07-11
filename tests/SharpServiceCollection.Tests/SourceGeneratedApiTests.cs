@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using SharpServiceCollection.Generated;
+using SharpServiceCollection.Tests.TestData.AggregatorFixtures;
 using SharpServiceCollection.Tests.TestData.ConcreteTypes;
 using SharpServiceCollection.Tests.TestData.Interfaces;
 using Shouldly;
@@ -490,5 +491,70 @@ public class SourceGeneratedApiTests
         var service = provider.GetService<IScopedDependency>();
         service.ShouldNotBeNull();
         service.ShouldBeOfType<ScopedDependency>();
+    }
+
+    [Fact]
+    public async Task ExecuteServiceRegistrationsAsync_NonGeneric_RunsAggregatorsInOrderAscending()
+    {
+        // Arrange
+        AggregatorCallLog.Reset();
+        var services = new ServiceCollection();
+
+        // Act
+        await services.ExecuteServiceRegistrationsAsync();
+
+        // Assert — FirstNonGenericAggregator (Order = 10) runs before LastNonGenericAggregator (Order = 30)
+        var nonGenericCalls = AggregatorCallLog.Snapshot
+            .Where(e => e.ContextKind == CallLoggingAggregator.NonGenericContextKey)
+            .Select(e => e.Aggregator)
+            .ToList();
+
+        nonGenericCalls.ShouldBe(new[]
+        {
+            nameof(FirstNonGenericAggregator),
+            nameof(LastNonGenericAggregator)
+        });
+    }
+
+    [Fact]
+    public async Task ExecuteServiceRegistrationsAsync_StringContext_RunsAggregatorsInOrderAscending()
+    {
+        // Arrange
+        AggregatorCallLog.Reset();
+        var services = new ServiceCollection();
+
+        // Act
+        await services.ExecuteServiceRegistrationsAsync("demo");
+
+        // Assert — FirstStringAggregator (Order = 10) runs before LastStringAggregator (Order = 30)
+        var stringCalls = AggregatorCallLog.Snapshot
+            .Where(e => e.ContextKind == CallLoggingAggregator.StringContextKey)
+            .Select(e => e.Aggregator)
+            .ToList();
+
+        stringCalls.ShouldBe(new[]
+        {
+            nameof(FirstStringAggregator),
+            nameof(LastStringAggregator)
+        });
+    }
+
+    [Fact]
+    public async Task ExecuteServiceRegistrationsAsync_IntContext_RunsAggregator()
+    {
+        // Arrange
+        AggregatorCallLog.Reset();
+        var services = new ServiceCollection();
+
+        // Act
+        await services.ExecuteServiceRegistrationsAsync(1);
+
+        // Assert — only the int-context aggregator lives on this overload
+        var intCalls = AggregatorCallLog.Snapshot
+            .Where(e => e.ContextKind == CallLoggingAggregator.IntContextKey)
+            .Select(e => e.Aggregator)
+            .ToList();
+
+        intCalls.ShouldBe(new[] { nameof(FirstIntAggregator) });
     }
 }

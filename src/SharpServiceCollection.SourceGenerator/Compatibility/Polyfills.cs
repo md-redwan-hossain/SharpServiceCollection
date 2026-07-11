@@ -4,7 +4,7 @@
 namespace System.Runtime.CompilerServices
 #pragma warning restore IDE0130
 {
-    [AttributeUsage(AttributeTargets.All, AllowMultiple = false, Inherited = false)]
+    [AttributeUsage(AttributeTargets.All, Inherited = false)]
     internal sealed class CompilerFeatureRequiredAttribute : Attribute
     {
         public CompilerFeatureRequiredAttribute(string featureName)
@@ -16,11 +16,10 @@ namespace System.Runtime.CompilerServices
         public bool IsOptional { get; init; }
     }
 
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Field | AttributeTargets.Property,
-        AllowMultiple = false, Inherited = false)]
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Field | AttributeTargets.Property, Inherited = false)]
     internal sealed class RequiredMemberAttribute : Attribute;
 
-    [AttributeUsage(AttributeTargets.Constructor, AllowMultiple = false, Inherited = false)]
+    [AttributeUsage(AttributeTargets.Constructor)]
     internal sealed class SetsRequiredMembersAttribute : Attribute;
 
     internal static class IsExternalInit

@@ -62,32 +62,23 @@ internal static class GeneratorDiagnostics
         description: InvalidResolveByDescription,
         helpLinkUri: string.Format(HelpLinkUriFormat, "source-generated-registration-aot-friendly"));
 
-    private const string ServiceRegistrationMustBeNamedTitle = "Service registration type must be named ServiceRegistration";
-    private const string ServiceRegistrationMustBeNamedDescription =
-        "Types that inherit ServiceRegistrationBase or ServiceRegistrationBase<T> must be named ServiceRegistration.";
-
     private const string ServiceRegistrationMustBeSealedTitle = "Service registration type must be sealed";
     private const string ServiceRegistrationMustBeSealedDescription =
-        "Types that inherit ServiceRegistrationBase or ServiceRegistrationBase<T> must be sealed.";
+        "Types annotated with [ServiceRegistration] or [ServiceRegistration<T>] must be sealed.";
 
     private const string ServiceRegistrationMissingCtorTitle = "Service registration type requires a parameterless constructor";
     private const string ServiceRegistrationMissingCtorDescription =
-        "ServiceRegistration must have an accessible parameterless constructor so the host can instantiate it.";
+        "[ServiceRegistration] / [ServiceRegistration<T>] types must have an accessible parameterless constructor so the host can instantiate them.";
 
-    internal static readonly DiagnosticDescriptor ServiceRegistrationMustBeNamed = new(
-        id: "SSC005",
-        title: ServiceRegistrationMustBeNamedTitle,
-        messageFormat: "Type '{0}' inherits ServiceRegistrationBase but must be named 'ServiceRegistration'",
-        category: GeneratorConstants.DiagnosticCategory,
-        defaultSeverity: DiagnosticSeverity.Error,
-        isEnabledByDefault: true,
-        description: ServiceRegistrationMustBeNamedDescription,
-        helpLinkUri: string.Format(HelpLinkUriFormat, "service-registration"));
+    private const string ServiceRegistrationMustImplementExecuteAsyncTitle =
+        "Service registration type must implement ExecuteAsync";
+    private const string ServiceRegistrationMustImplementExecuteAsyncDescription =
+        "[ServiceRegistration] / [ServiceRegistration<T>] types must expose an accessible ExecuteAsync(IServiceCollection[, TContext]) method.";
 
     internal static readonly DiagnosticDescriptor ServiceRegistrationMustBeSealed = new(
         id: "SSC006",
         title: ServiceRegistrationMustBeSealedTitle,
-        messageFormat: "Type '{0}' inherits ServiceRegistrationBase but must be sealed",
+        messageFormat: "Type '{0}' is decorated with [ServiceRegistration] but is not sealed",
         category: GeneratorConstants.DiagnosticCategory,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
@@ -103,4 +94,26 @@ internal static class GeneratorDiagnostics
         isEnabledByDefault: true,
         description: ServiceRegistrationMissingCtorDescription,
         helpLinkUri: string.Format(HelpLinkUriFormat, "service-registration"));
+
+    internal static readonly DiagnosticDescriptor ServiceRegistrationMustImplementExecuteAsync = new(
+        id: "SSR008",
+        title: ServiceRegistrationMustImplementExecuteAsyncTitle,
+        messageFormat: "Type '{0}' must implement ExecuteAsync(IServiceCollection[, TContext])",
+        category: GeneratorConstants.DiagnosticCategory,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: ServiceRegistrationMustImplementExecuteAsyncDescription,
+        helpLinkUri: string.Format(HelpLinkUriFormat, "service-registration"));
+
+    // TEMPORARY: re-instrumented to catch the persistent NRE. Will be removed once the
+    // offending access is identified.
+    internal static readonly DiagnosticDescriptor DebugDiagnostic = new(
+        id: "SSR999",
+        title: "Generator debug",
+        messageFormat: "{0}",
+        category: GeneratorConstants.DiagnosticCategory,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Temporary debug diagnostic to surface generator exceptions.",
+        helpLinkUri: string.Empty);
 }

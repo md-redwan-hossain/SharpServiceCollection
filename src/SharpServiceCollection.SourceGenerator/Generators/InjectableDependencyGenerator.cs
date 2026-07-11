@@ -7,9 +7,25 @@ using Microsoft.CodeAnalysis.Text;
 using SharpServiceCollection.SourceGenerator.InternalTypes;
 using static SharpServiceCollection.SourceGenerator.InternalTypes.GeneratorConstants;
 using static SharpServiceCollection.SourceGenerator.InternalTypes.GeneratorConstants.DependencyInjection;
+using static SharpServiceCollection.SourceGenerator.InternalTypes.GeneratorConstants.TrackingNames;
 
 namespace SharpServiceCollection.SourceGenerator.Generators;
 
+// Optimised following Andrew Lock's "Creating a Source Generator - Part 9":
+// https://andrewlock.net/creating-a-source-generator-part-9-avoiding-performance-pitfalls-in-incremental-generators/
+//
+// Key wins:
+//   1. `ForAttributeWithMetadataName` pre-filters to nodes that actually carry
+//      `InjectableDependencyAttribute` (non-generic or unbound arity-1). The
+//      predicate stays purely syntactic - no semantic work, no allocations.
+//   2. The per-class transform returns a struct so we avoid allocating a fresh
+//      `List<>` per invalidation. Empty results are dropped before downstream
+//      stages.
+//   3. We only `Combine` with the assembly name - never with the full
+//      `Compilation` - so an edit that doesn't touch the assembly name doesn't
+//      re-run the emission stage.
+//   4. Every pipeline stage is decorated with `WithTrackingName` so the
+//      generator's behaviour is visible in incremental-gen traces.
 [Generator]
 public sealed class InjectableDependencyGenerator : IIncrementalGenerator
 {
@@ -17,39 +33,67 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
     private const string TypeOfPrefix = "typeof(";
     private const string TypeOfSuffix = ")";
 
+    private const string NonGenericAttributeMetadataName =
+        "SharpServiceCollection.Attributes.InjectableDependencyAttribute";
+    private const string GenericAttributeMetadataName =
+        "SharpServiceCollection.Attributes.InjectableDependencyAttribute`1";
+    
     private readonly record struct TypeRegistrationResult(
         ImmutableArray<ServiceRegistrationDescriptor> Descriptors,
-        ImmutableArray<Diagnostic> Diagnostics);
+        ImmutableArray<Diagnostic> Diagnostics)
+    {
+        public static readonly TypeRegistrationResult Empty = new([], []);
+    }
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var typeResults = context.SyntaxProvider.CreateSyntaxProvider(
-                predicate: static (node, _) => node is ClassDeclarationSyntax { AttributeLists.Count: > 0 },
+        // (1) Two pre-filtered streams: the non-generic attribute has metadata
+        // name `InjectableDependencyAttribute`, while the unbound generic
+        // `InjectableDependencyAttribute<T>` is reported as `...Attribute`1`.
+        // ForAttributeWithMetadataName requires both shapes to be queried
+        // explicitly - the predicate stays purely syntactic.
+        var nonGenericStream = context.SyntaxProvider
+            .ForAttributeWithMetadataName(
+                NonGenericAttributeMetadataName,
+                predicate: static (node, _) => node is ClassDeclarationSyntax,
                 transform: static (ctx, _) => AnalyzeClass(ctx))
-            .Where(static result => result.HasValue)
-            .Select(static (result, _) => result.GetValueOrDefault());
+            .WithTrackingName(InjectableDependencyNonGeneric);
 
-        var collectedResults = typeResults.Collect();
+        var genericStream = context.SyntaxProvider
+            .ForAttributeWithMetadataName(
+                GenericAttributeMetadataName,
+                predicate: static (node, _) => node is ClassDeclarationSyntax,
+                transform: static (ctx, _) => AnalyzeClass(ctx))
+            .WithTrackingName(InjectableDependencyGeneric);
 
+        // (2) Collect each stream independently and combine. Cross-stream
+        // duplicates are absorbed by the deduplication in `EmitGeneratedCode`.
+        // We deliberately avoid combining with the full `Compilation` - the
+        // assembly name is sufficient and cheap to invalidate on.
         var assemblyName = context.CompilationProvider
             .Select(static (compilation, _) => compilation.AssemblyName);
 
-        var combined = collectedResults.Combine(assemblyName);
+        var combined = nonGenericStream
+            .Collect()
+            .WithTrackingName(InjectableDependencyCollectNonGeneric)
+            .Combine(genericStream.Collect().WithTrackingName(InjectableDependencyCollectGeneric))
+            .WithTrackingName(InjectableDependencyCombineStreams)
+            .Combine(assemblyName)
+            .WithTrackingName(InjectableDependencyCombineAssembly);
 
         context.RegisterSourceOutput(combined,
-            static (spc, source) => EmitGeneratedCode(spc, source.Left, source.Right));
+            static (spc, source) => EmitGeneratedCode(
+                spc,
+                source.Left.Left,
+                source.Left.Right,
+                source.Right));
     }
 
-    private static TypeRegistrationResult? AnalyzeClass(GeneratorSyntaxContext ctx)
+    private static TypeRegistrationResult AnalyzeClass(GeneratorAttributeSyntaxContext ctx)
     {
-        if (ctx.Node is not ClassDeclarationSyntax classDeclaration)
+        if (ctx.TargetSymbol is not INamedTypeSymbol symbol)
         {
-            return null;
-        }
-
-        if (ModelExtensions.GetDeclaredSymbol(ctx.SemanticModel, classDeclaration) is not INamedTypeSymbol symbol)
-        {
-            return null;
+            return TypeRegistrationResult.Empty;
         }
 
         var registrations = new List<RegistrationModel>();
@@ -60,7 +104,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
 
         if (descriptors.Count == 0 && diagnostics.Count == 0)
         {
-            return null;
+            return TypeRegistrationResult.Empty;
         }
 
         return new TypeRegistrationResult([..descriptors], [..diagnostics]);
@@ -68,7 +112,8 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
 
     private static void EmitGeneratedCode(
         SourceProductionContext context,
-        ImmutableArray<TypeRegistrationResult> results,
+        ImmutableArray<TypeRegistrationResult> nonGenericResults,
+        ImmutableArray<TypeRegistrationResult> genericResults,
         string? assemblyName)
     {
         if (string.Equals(assemblyName, RuntimeAssemblyName, StringComparison.Ordinal))
@@ -80,6 +125,25 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
         var seen = new HashSet<(string ServiceTypeName, string ImplementationTypeName, string Key,
             RegistrationLifetime Lifetime, bool TryAdd, bool Enumerable)>();
 
+        CollectDescriptors(nonGenericResults, descriptors, seen, context);
+        CollectDescriptors(genericResults, descriptors, seen, context);
+
+        var sorted = descriptors
+            .OrderBy(r => r.Order)
+            .ThenBy(r => r.ImplementationNameSortKey, StringComparer.Ordinal)
+            .ToList();
+
+        var generatedSource = BuildSource(sorted, assemblyName);
+        context.AddSource(GeneratedFileName, SourceText.From(generatedSource, Encoding.UTF8));
+    }
+
+    private static void CollectDescriptors(
+        ImmutableArray<TypeRegistrationResult> results,
+        List<ServiceRegistrationDescriptor> descriptors,
+        HashSet<(string ServiceTypeName, string ImplementationTypeName, string Key,
+            RegistrationLifetime Lifetime, bool TryAdd, bool Enumerable)> seen,
+        SourceProductionContext context)
+    {
         foreach (var result in results)
         {
             foreach (var diagnostic in result.Diagnostics)
@@ -98,14 +162,6 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
                 }
             }
         }
-
-        var sorted = descriptors
-            .OrderBy(r => r.Order)
-            .ThenBy(r => r.ImplementationNameSortKey, StringComparer.Ordinal)
-            .ToList();
-
-        var generatedSource = BuildSource(sorted, assemblyName);
-        context.AddSource(GeneratedFileName, SourceText.From(generatedSource, Encoding.UTF8));
     }
 
     private static void CollectRegistrations(

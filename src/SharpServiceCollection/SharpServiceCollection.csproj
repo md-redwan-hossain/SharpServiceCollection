@@ -11,7 +11,7 @@
               PackagePath="analyzers/dotnet/cs"/>
         <None Include="buildTransitive\SharpServiceCollection.props"
               Pack="true"
-              PackagePath="buildTransitive\"/>
+              PackagePath="buildTransitive/"/>
     </ItemGroup>
 
     <ItemGroup>

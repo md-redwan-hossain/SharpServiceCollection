@@ -6,11 +6,8 @@
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
         <IsTestProject>true</IsTestProject>
+        <ServiceRegistrationRoot>true</ServiceRegistrationRoot>
     </PropertyGroup>
-
-    <ItemGroup>
-        <CompilerVisibleProperty Include="ServiceRegistrationRoot" />
-    </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="coverlet.collector">
@@ -28,12 +25,10 @@
     </ItemGroup>
     
     <ItemGroup>
-      <ProjectReference Include="..\src\SharpServiceCollection\SharpServiceCollection.csproj" />
-      <ProjectReference Include="..\src\SharpServiceCollection.SourceGenerator\SharpServiceCollection.SourceGenerator.csproj"
+      <ProjectReference Include="..\..\src\SharpServiceCollection\SharpServiceCollection.csproj" />
+      <ProjectReference Include="..\..\src\SharpServiceCollection.SourceGenerator\SharpServiceCollection.SourceGenerator.csproj"
                         OutputItemType="Analyzer"
                         ReferenceOutputAssembly="false" />
-      <ProjectReference Include="..\tests\ServiceRegistration.ModuleA\ServiceRegistration.ModuleA.csproj" />
-      <ProjectReference Include="..\tests\ServiceRegistration.ModuleB\ServiceRegistration.ModuleB.csproj" />
     </ItemGroup>
 
 </Project>
