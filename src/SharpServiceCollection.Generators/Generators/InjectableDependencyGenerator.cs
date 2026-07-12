@@ -596,7 +596,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
     private static string BuildSource(IReadOnlyCollection<ServiceRegistrationDescriptor> registrations,
         string? assemblyName)
     {
-        var sanitisedAssemblyName = AssemblyNameSanitizer.Sanitize(assemblyName).TrimStart('_');
+        var sanitisedAssemblyName = AssemblyNameSanitizer.Sanitize(assemblyName);
         var assemblySpecificMethodName = $"{GeneratedCode.AddServicesMethodNamePrefix}{sanitisedAssemblyName}";
         var registrationsSource = BuildRegistrationsSource(registrations);
 

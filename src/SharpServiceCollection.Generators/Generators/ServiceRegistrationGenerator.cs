@@ -31,6 +31,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
     private const string AggregatorGeneratedFileName = "SharpServiceCollection.ServiceRegistration.Aggregator.g.cs";
     private const string OrderPropertyName = "Order";
     private const string RootPropertyName = "ServiceRegistrationRoot";
+    private const string RootDescSortOrderPropertyName = "ServiceRegistrationRootDescSortOrder";
     private const string GeneratedMethodName = "ExecuteServiceRegistrationItemsAsync";
     private const string RegisterMethodName = "RegisterAsync";
 
@@ -128,24 +129,39 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
                     out var value) &&
                 string.Equals(value, "true", StringComparison.OrdinalIgnoreCase));
 
+        var isDescendingRootSortOrder = context.AnalyzerConfigOptionsProvider
+            .Select(static (provider, _) =>
+            {
+                if (!provider.GlobalOptions.TryGetValue(
+                        "build_property." + RootDescSortOrderPropertyName,
+                        out var value))
+                {
+                    return true;
+                }
+
+                return !bool.TryParse(value, out var descending) || descending;
+            });
+
         var rootSource = context.CompilationProvider
             .Combine(collectedCandidates)
             .Combine(isRoot)
+            .Combine(isDescendingRootSortOrder)
             .Combine(isDisabled);
 
         context.RegisterSourceOutput(
             rootSource,
             static (spc, input) =>
             {
-                if (input.Right || !input.Left.Right)
+                if (input.Right || !input.Left.Left.Right)
                 {
                     return;
                 }
 
                 GenerateRootExtensions(
                     spc,
-                    input.Left.Left.Left,
-                    input.Left.Left.Right);
+                    input.Left.Left.Left.Left,
+                    input.Left.Left.Left.Right,
+                    input.Left.Right);
             });
     }
 
@@ -304,7 +320,8 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
     private static void GenerateRootExtensions(
         SourceProductionContext context,
         Compilation compilation,
-        ImmutableArray<RegistrationAnalysis> analyses)
+        ImmutableArray<RegistrationAnalysis> analyses,
+        bool isDescendingRootSortOrder)
     {
         var localDescriptors = GetDescriptors(analyses);
         var referencedAggregators = FindReferencedAggregators(compilation);
@@ -314,7 +331,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
             return;
         }
 
-        var source = BuildRootSource(localDescriptors, referencedAggregators);
+        var source = BuildRootSource(localDescriptors, referencedAggregators, isDescendingRootSortOrder);
         context.AddSource(GeneratedFileName, source);
     }
 
@@ -512,7 +529,8 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
 
     private static string BuildRootSource(
         IReadOnlyList<RegistrationDescriptor> localDescriptors,
-        IReadOnlyList<AggregatorMethod> aggregators)
+        IReadOnlyList<AggregatorMethod> aggregators,
+        bool isDescendingRootSortOrder)
     {
         var groups = new Dictionary<string, List<RootRegistrationCall>>(StringComparer.Ordinal);
 
@@ -558,7 +576,10 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
 
         foreach (var calls in groups.Values)
         {
-            calls.Sort(CompareRootRegistrationCalls);
+            calls.Sort((left, right) => CompareRootRegistrationCalls(
+                left,
+                right,
+                isDescendingRootSortOrder));
         }
 
         var orderedGroups = new List<KeyValuePair<string, List<RootRegistrationCall>>>(groups);
@@ -630,9 +651,12 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
 
     private static int CompareRootRegistrationCalls(
         RootRegistrationCall left,
-        RootRegistrationCall right)
+        RootRegistrationCall right,
+        bool isDescendingRootSortOrder)
     {
-        var orderComparison = left.Order.CompareTo(right.Order);
+        var orderComparison = isDescendingRootSortOrder
+            ? right.Order.CompareTo(left.Order)
+            : left.Order.CompareTo(right.Order);
 
         return orderComparison != 0
             ? orderComparison

@@ -317,7 +317,7 @@ assembly name:
 
 ```csharp
 // For an assembly named My.Module.Application:
-services.AddAttributedServicesFrom_MyModuleApplication();
+services.AddAttributedServicesFrom_My_Module_Application();
 ```
 
 The complete method name follows this pattern:
@@ -330,15 +330,15 @@ For example:
 
 ```text
 Assembly name:  My.Module.Application
-Generated call: services.AddAttributedServicesFrom_MyModuleApplication();
+Generated call: services.AddAttributedServicesFrom_My_Module_Application();
 ```
 
-The generator uses the consuming project's `AssemblyName`, removes dots and other non-alphanumeric characters, and adds
-the `AddAttributedServicesFrom_` prefix. For example, the test project assembly `SharpServiceCollection.Tests`
-generates:
+The generator uses the consuming project's `AssemblyName`, replaces dots and other non-alphanumeric character runs
+with underscores, and adds the `AddAttributedServicesFrom_` prefix. For example, the test project assembly
+`SharpServiceCollection.Tests` generates:
 
 ```csharp
-services.AddAttributedServicesFrom_SharpServiceCollectionTests();
+services.AddAttributedServicesFrom_SharpServiceCollection_Tests();
 ```
 
 The generated method is public, so a host project can call the method generated in a referenced module assembly.
@@ -493,8 +493,9 @@ The generator discovers classes that:
 
 The class can have any name. It does not need to be named `ServiceRegistration`.
 
-`Order` controls execution order. Lower order values run first. Registrations with the same order are sorted by
-implementation type name.
+`Order` controls execution order. Higher order values run first by default. Registrations with the same order are sorted
+by implementation type name. Set `ServiceRegistrationRootDescSortOrder` to `false` in the root project's `.csproj` to
+make lower order values run first.
 
 ### Enable the host project
 
@@ -504,6 +505,8 @@ Set `ServiceRegistrationRoot` in the host project's `.csproj` file:
 
 <PropertyGroup>
     <ServiceRegistrationRoot>true</ServiceRegistrationRoot>
+    <!-- Optional; defaults to true. Set false for ascending order. -->
+    <ServiceRegistrationRootDescSortOrder>false</ServiceRegistrationRootDescSortOrder>
 </PropertyGroup>
 ```
 

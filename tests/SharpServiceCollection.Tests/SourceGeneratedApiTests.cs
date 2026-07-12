@@ -502,11 +502,11 @@ public class SourceGeneratedApiTests
 
 
     [Fact]
-    public void AddAttributedServicesFromSharpServiceCollectionTests_RegistersMatchingInterface()
+    public void AddAttributedServicesFrom_SharpServiceCollection_Tests_RegistersMatchingInterface()
     {
         var services = new ServiceCollection();
 
-        services.AddAttributedServicesFrom_SharpServiceCollectionTests();
+        services.AddAttributedServicesFrom_SharpServiceCollection_Tests();
         var provider = services.BuildServiceProvider();
 
         var service = provider.GetService<IScopedDependency>();
