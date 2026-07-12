@@ -26,11 +26,18 @@
         <ProjectReference Include="..\SharpServiceCollection.Generators\SharpServiceCollection.Generators.csproj"
                           PrivateAssets="All"
                           ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\SharpServiceCollection.CodeFixes\SharpServiceCollection.CodeFixes.csproj"
+                          PrivateAssets="All"
+                          ReferenceOutputAssembly="false" />
     </ItemGroup>
 
     <!-- Bundle the supporting assemblies into this single consumer package. -->
     <ItemGroup>
         <None Include="..\SharpServiceCollection.Generators\bin\$(Configuration)\$(TargetFramework)\SharpServiceCollection.Generators.dll"
+              Pack="true"
+              PackagePath="analyzers\dotnet\cs"
+              Visible="false"/>
+        <None Include="..\SharpServiceCollection.CodeFixes\bin\$(Configuration)\$(TargetFramework)\SharpServiceCollection.CodeFixes.dll"
               Pack="true"
               PackagePath="analyzers\dotnet\cs"
               Visible="false"/>

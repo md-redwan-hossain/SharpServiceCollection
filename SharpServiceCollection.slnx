@@ -2,12 +2,14 @@
   <Folder Name="/src/">
     <Project Path="src/SharpServiceCollection.Dependencies/SharpServiceCollection.Dependencies.csproj" />
     <Project Path="src/SharpServiceCollection.Generators/SharpServiceCollection.Generators.csproj" />
+    <Project Path="src/SharpServiceCollection.CodeFixes/SharpServiceCollection.CodeFixes.csproj" />
     <Project Path="src/SharpServiceCollection/SharpServiceCollection.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/ServiceRegistration.ModuleA/ServiceRegistration.ModuleA.csproj" />
     <Project Path="tests/ServiceRegistration.ModuleB/ServiceRegistration.ModuleB.csproj" />
     <Project Path="tests/SharpServiceCollection.Tests/SharpServiceCollection.Tests.csproj" />
+
     <Project Path="tests/TrialWebApi/TrialWebApi.csproj" />
   </Folder>
 </Solution>

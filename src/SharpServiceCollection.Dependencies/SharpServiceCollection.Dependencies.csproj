@@ -14,7 +14,9 @@
     </ItemGroup>
     
     <ItemGroup>
-        <InternalsVisibleTo Include="SharpServiceCollection"/>
+        <InternalsVisibleTo Include="SharpServiceCollection" />
+        <InternalsVisibleTo Include="SharpServiceCollection.Generators" />
+        <InternalsVisibleTo Include="SharpServiceCollection.CodeFixes" />
     </ItemGroup>
 
 </Project>
