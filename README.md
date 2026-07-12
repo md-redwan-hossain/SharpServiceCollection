@@ -1,6 +1,6 @@
 # SharpServiceCollection
 
-[![Build status](https://github.com/md-redwan-hossain/SharpServiceCollection/actions/workflows/dotnet.yml/badge.svg?branch=main)](https://github.com/md-redwan-hossain/SharpServiceCollection/actions/workflows/dotnet.yml)
+[![Build status](https://github.com/md-redwan-hossain/SharpServiceCollection/actions/workflows/dotnet.yaml/badge.svg?branch=main)](https://github.com/md-redwan-hossain/SharpServiceCollection/actions/workflows/dotnet.yaml)
 
 **SharpServiceCollection** is a lightweight C# package that provides a declarative, comipile-time and AOT-friendly way
 to work with `IServiceCollection`.

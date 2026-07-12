@@ -1,4 +1,4 @@
-name: dotnet-check
+name: dotnet
 
 on:
   workflow_dispatch:
@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Setup DotNet 8
+      - name: Setup Dotnet
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "8.0.x"
