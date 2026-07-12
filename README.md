@@ -20,7 +20,7 @@ to work with `IServiceCollection`.
 - [Choose how services are discovered](#choose-how-services-are-discovered)
     - [Source-generated registration](#source-generated-registration)
     - [Reflection-based registration](#reflection-based-registration)
-- [Register services from multiple projects](#register-services-from-multiple-projects)
+- [Register services from multiple files or projects](#register-services-from-multiple-files-or-projects)
     - [Create a module registration](#create-a-module-registration)
     - [Enable the host project](#enable-the-host-project)
     - [Use a registration context](#use-a-registration-context)
@@ -360,18 +360,107 @@ services.AddServicesFromAssemblyContaining(typeof(PluginMarker));
 Reflection scans the selected assembly at runtime. It is more flexible than source generation, but source generation is
 usually preferable when the set of assemblies is known during the build.
 
-## Register services from multiple projects
+## Register services from multiple files or projects
 
-In a modular solution, each project can own its service registrations. A host project can then discover and execute
-those registrations through generated code.
+Service registrations can be split across any number of files within a project or distributed across multiple projects. In
+both cases, the source generator aggregates the registrations so they can be discovered and executed together. This is
+especially useful in a modular solution where each project owns its service registrations.
 
-This is useful when your solution looks like this:
+For example, registrations can be organized across multiple files in one project:
 
 ```text
-MyApp.Api                 # host project
-MyApp.Orders              # feature module
-MyApp.Payments            # feature module
+MyApp.Api                         # host project
+├── Program.cs
+└── Registrations/
+    ├── DatabaseConfig.cs
+    ├── AwsConfig.cs
+    └── OtherConfig.cs
 ```
+
+Each file can contain its own `[ServiceRegistrationItem]` class. The generator combines all registration items in the
+project, regardless of which file contains them.
+
+The same organization works when registrations are split across projects:
+
+```text
+MyApp.Api                         # host project
+├── Program.cs
+└── Registrations/
+    ├── DatabaseConfig.cs
+    ├── AwsConfig.cs
+    └── OtherConfig.cs
+MyApp.Orders                      # feature module
+├── OrdersRegistration.cs
+└── OrderServices.cs
+MyApp.Payments                    # feature module
+├── PaymentsRegistration.cs
+└── PaymentServices.cs
+```
+
+Each project gets an aggregator for its registration items. The host combines its own items with aggregators discovered
+through referenced projects or packages.
+
+### Why this matters
+
+Without orchestration, the host must know every registration class and call them one by one:
+
+```csharp
+await new DatabaseConfig().RegisterAsync(services);
+await new AwsConfig().RegisterAsync(services);
+await new OtherConfig().RegisterAsync(services);
+await new OrdersRegistration().RegisterAsync(services);
+await new PaymentsRegistration().RegisterAsync(services);
+```
+
+That approach becomes a maintenance problem as files and projects are added: the host must be updated every time a new
+registration item is introduced, and it must preserve the correct execution order.
+
+With `[ServiceRegistrationItem]`, the generators discover registration items across all files in the host and referenced
+projects, aggregate them, sort them by `Order`, and generate the orchestration method. The host calls one method instead:
+
+```csharp
+await builder.Services.ExecuteServiceRegistrationItemsAsync();
+```
+
+Context-aware registrations are driven by the generic type argument. For every `[ServiceRegistrationItem]` implementation
+of `IServiceRegistration<TContext>` found in the host or any referenced project, the root generator groups registrations
+by `TContext` and generates an `ExecuteServiceRegistrationItemsAsync` overload accepting that context type. The host makes
+one call for each distinct context type, rather than calling each registration class individually.
+
+For example, these registration classes:
+
+```csharp
+[ServiceRegistrationItem]
+public sealed class DatabaseConfig : IServiceRegistration<AppContext>
+{
+    public Task RegisterAsync(IServiceCollection services, AppContext context)
+    {
+        services.AddDbContext<AppDbContext>(context.Configuration);
+        return Task.CompletedTask;
+    }
+}
+
+[ServiceRegistrationItem]
+public sealed class WorkerConfig : IServiceRegistration<WorkerContext>
+{
+    public Task RegisterAsync(IServiceCollection services, WorkerContext context)
+    {
+        services.AddSingleton<WorkerOptions>(context.Options);
+        return Task.CompletedTask;
+    }
+}
+```
+
+cause the host to receive overloads equivalent to:
+
+```csharp
+await builder.Services.ExecuteServiceRegistrationItemsAsync(appContext);
+await builder.Services.ExecuteServiceRegistrationItemsAsync(workerContext);
+```
+
+All registration items using `AppContext` run through the first overload, and all items using `WorkerContext` run through the
+second. Adding another registration file or project does not require changing the host startup code unless it introduces a
+new context type that the host needs to provide.
 
 ### Create a module registration
 
@@ -418,7 +507,20 @@ Set `ServiceRegistrationRoot` in the host project's `.csproj` file:
 </PropertyGroup>
 ```
 
-The host can contain registrations itself, split across any number of files, and/or reference module projects or packages. Then execute the generated registrations during startup:
+The host can contain registrations split across any number of files and/or reference module projects or packages. The
+source generator creates an `ExecuteServiceRegistrationItemsAsync` overload for each registration context used by the
+host and its referenced modules. Registrations that implement `IServiceRegistration` use the overload without a context;
+registrations that implement `IServiceRegistration<TContext>` use the overload accepting that context type.
+
+For example, if registrations use `AppContext` and `WorkerContext`, the host gets overloads equivalent to:
+
+```csharp
+await builder.Services.ExecuteServiceRegistrationItemsAsync();
+await builder.Services.ExecuteServiceRegistrationItemsAsync(appContext);
+await builder.Services.ExecuteServiceRegistrationItemsAsync(workerContext);
+```
+
+Then execute the generated registrations during startup: 
 
 ```csharp
 using SharpServiceCollection.Generated;
