@@ -655,7 +655,10 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
         }
 
         var methodName = GetNonKeyedMethodName(registration.Lifetime, registration.TryAdd);
-        builder.AppendLine($"{Indent}services.{methodName}({serviceType}, {implType});");
+        var arguments = registration.ServiceTypeName == registration.ImplementationTypeName
+            ? serviceType
+            : $"{serviceType}, {implType}";
+        builder.AppendLine($"{Indent}services.{methodName}({arguments});");
     }
 
     private static void AppendKeyedRegistration(StringBuilder builder, ServiceRegistrationDescriptor registration)
@@ -664,8 +667,11 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
         var methodName = GetKeyedMethodName(registration.Lifetime, registration.TryAdd);
         var serviceType = TypeOfExpression(registration.ServiceTypeName);
         var implType = TypeOfExpression(registration.ImplementationTypeName);
+        var arguments = registration.ServiceTypeName == registration.ImplementationTypeName
+            ? $"{serviceType}, {keyLiteral}"
+            : $"{serviceType}, {keyLiteral}, {implType}";
 
-        builder.AppendLine($"{Indent}services.{methodName}({serviceType}, {keyLiteral}, {implType});");
+        builder.AppendLine($"{Indent}services.{methodName}({arguments});");
     }
 
     private static string TypeOfExpression(string typeName)

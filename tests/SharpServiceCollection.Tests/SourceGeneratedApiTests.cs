@@ -216,6 +216,28 @@ public class SourceGeneratedApiTests
     }
 
     [Fact]
+    public void SelfResolvableDependency_TryResolveBySelf_Keyed()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        // Act
+        services.AddAttributedServices();
+        var serviceProvider = services.BuildServiceProvider();
+        var descriptor = services.FirstOrDefault(d =>
+            d.ServiceType == typeof(SelfResolvableDependency) &&
+            Equals(d.ServiceKey, "key-self"));
+
+        // Assert
+        var service = serviceProvider.GetKeyedService<SelfResolvableDependency>("key-self");
+        service.ShouldNotBeNull();
+        service.ShouldBeOfType<SelfResolvableDependency>();
+
+        descriptor.ShouldNotBeNull();
+        descriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
     public void TransientDependency_ResolveByMatchingInterface()
     {
         // Arrange
