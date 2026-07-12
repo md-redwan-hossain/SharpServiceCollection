@@ -26,8 +26,6 @@ to work with `IServiceCollection`.
     - [Use a registration context](#use-a-registration-context)
 - [Opt out of source generation](#opt-out-of-source-generation)
 - [Diagnostics](#diagnostics)
-- [Package contents](#package-contents)
-
 ## Installation
 
 Install **one** package. You do not need to install separate packages for the runtime library, dependency types, or
@@ -649,20 +647,4 @@ The source generator reports clear diagnostics when an attribute or registration
 
 Fix the reported source code and rebuild. The generator will run again automatically.
 
-## Package contents
 
-`SharpServiceCollection` is distributed as a single NuGet package:
-
-```text
-SharpServiceCollection.nupkg
-├── lib/netstandard2.0/
-│   ├── SharpServiceCollection.dll
-│   └── SharpServiceCollection.Dependencies.dll
-└── analyzers/dotnet/cs/
-    ├── SharpServiceCollection.Generators.dll
-    └── SharpServiceCollection.Dependencies.dll
-```
-
-The dependency assembly is included in the package so consumers can use the public attribute, enum, and interface types
-without installing another package. The generator copy is placed in the analyzer folder so it runs automatically during
-builds.
