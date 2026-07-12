@@ -32,7 +32,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
     private const string OrderPropertyName = "Order";
     private const string RootPropertyName = "ServiceRegistrationRoot";
     private const string RootDescSortOrderPropertyName = "ServiceRegistrationRootDescSortOrder";
-    private const string GeneratedMethodName = "ExecuteServiceRegistrationItemsAsync";
+    private const string GeneratedMethodName = "AddServiceRegistrationItemsAsync";
     private const string RegisterMethodName = "RegisterAsync";
 
     private const string ServiceCollectionType =

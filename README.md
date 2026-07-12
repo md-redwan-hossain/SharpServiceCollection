@@ -369,7 +369,7 @@ especially useful in a modular solution where each project owns its service regi
 For example, registrations can be organized across multiple files in one project:
 
 ```text
-MyApp.Api                         # host project
+MyApp.Api                         # one project
 ├── Program.cs
 └── Registrations/
     ├── DatabaseConfig.cs
@@ -380,25 +380,28 @@ MyApp.Api                         # host project
 Each file can contain its own `[ServiceRegistrationItem]` class. The generator combines all registration items in the
 project, regardless of which file contains them.
 
-The same organization works when registrations are split across projects:
+The same file-level organization works when registrations are split across projects. For example, a host can reference
+feature modules whose registrations are also organized across multiple files:
 
 ```text
 MyApp.Api                         # host project
 ├── Program.cs
-└── Registrations/
-    ├── DatabaseConfig.cs
-    ├── AwsConfig.cs
-    └── OtherConfig.cs
+├── DatabaseConfig.cs
+├── AwsConfig.cs
+└── OtherConfig.cs
+
 MyApp.Orders                      # feature module
-├── OrdersRegistration.cs
-└── OrderServices.cs
+├── OrdersServiceRegistration.cs
+├── OrdersEmailConfig.cs
+└── OrdersQuartzWorkerConfig.cs
+
 MyApp.Payments                    # feature module
-├── PaymentsRegistration.cs
-└── PaymentServices.cs
+└── PaymentsServiceRegistration.cs
 ```
 
-Each project gets an aggregator for its registration items. The host combines its own items with aggregators discovered
-through referenced projects or packages.
+Each project can split its registration items across as many meaningful files as needed. The generator combines all
+registration items within each project into that project's aggregator. The host then combines its own items with aggregators
+discovered through referenced projects or packages.
 
 ### Why this matters
 
@@ -408,8 +411,10 @@ Without orchestration, the host must know every registration class and call them
 await new DatabaseConfig().RegisterAsync(services);
 await new AwsConfig().RegisterAsync(services);
 await new OtherConfig().RegisterAsync(services);
-await new OrdersRegistration().RegisterAsync(services);
-await new PaymentsRegistration().RegisterAsync(services);
+await new OrdersServiceRegistration().RegisterAsync(services);
+await new OrdersEmailConfig().RegisterAsync(services);
+await new OrdersQuartzWorkerConfig().RegisterAsync(services);
+await new PaymentsServiceRegistration().RegisterAsync(services);
 ```
 
 That approach becomes a maintenance problem as files and projects are added: the host must be updated every time a new
@@ -419,12 +424,12 @@ With `[ServiceRegistrationItem]`, the generators discover registration items acr
 projects, aggregate them, sort them by `Order`, and generate the orchestration method. The host calls one method instead:
 
 ```csharp
-await builder.Services.ExecuteServiceRegistrationItemsAsync();
+await builder.Services.AddServiceRegistrationItemsAsync();
 ```
 
 Context-aware registrations are driven by the generic type argument. For every `[ServiceRegistrationItem]` implementation
 of `IServiceRegistration<TContext>` found in the host or any referenced project, the root generator groups registrations
-by `TContext` and generates an `ExecuteServiceRegistrationItemsAsync` overload accepting that context type. The host makes
+by `TContext` and generates an `AddServiceRegistrationItemsAsync` overload accepting that context type. The host makes
 one call for each distinct context type, rather than calling each registration class individually.
 
 For example, these registration classes:
@@ -454,8 +459,8 @@ public sealed class WorkerConfig : IServiceRegistration<WorkerContext>
 cause the host to receive overloads equivalent to:
 
 ```csharp
-await builder.Services.ExecuteServiceRegistrationItemsAsync(appContext);
-await builder.Services.ExecuteServiceRegistrationItemsAsync(workerContext);
+await builder.Services.AddServiceRegistrationItemsAsync(appContext);
+await builder.Services.AddServiceRegistrationItemsAsync(workerContext);
 ```
 
 All registration items using `AppContext` run through the first overload, and all items using `WorkerContext` run through the
@@ -511,16 +516,16 @@ Set `ServiceRegistrationRoot` in the host project's `.csproj` file:
 ```
 
 The host can contain registrations split across any number of files and/or reference module projects or packages. The
-source generator creates an `ExecuteServiceRegistrationItemsAsync` overload for each registration context used by the
+source generator creates an `AddServiceRegistrationItemsAsync` overload for each registration context used by the
 host and its referenced modules. Registrations that implement `IServiceRegistration` use the overload without a context;
 registrations that implement `IServiceRegistration<TContext>` use the overload accepting that context type.
 
 For example, if registrations use `AppContext` and `WorkerContext`, the host gets overloads equivalent to:
 
 ```csharp
-await builder.Services.ExecuteServiceRegistrationItemsAsync();
-await builder.Services.ExecuteServiceRegistrationItemsAsync(appContext);
-await builder.Services.ExecuteServiceRegistrationItemsAsync(workerContext);
+await builder.Services.AddServiceRegistrationItemsAsync();
+await builder.Services.AddServiceRegistrationItemsAsync(appContext);
+await builder.Services.AddServiceRegistrationItemsAsync(workerContext);
 ```
 
 Then execute the generated registrations during startup: 
@@ -530,14 +535,14 @@ using SharpServiceCollection.Generated;
 
 var builder = WebApplication.CreateBuilder(args);
 
-await builder.Services.ExecuteServiceRegistrationItemsAsync();
+await builder.Services.AddServiceRegistrationItemsAsync();
 
 var app = builder.Build();
 app.Run();
 ```
 
 The source generator creates a small public aggregator in every project that contains service registrations. A project with
-`ServiceRegistrationRoot` also gets the `ExecuteServiceRegistrationItemsAsync` orchestration extension. It combines that
+`ServiceRegistrationRoot` also gets the `AddServiceRegistrationItemsAsync` orchestration extension. It combines that
 project's local registrations with aggregators discovered through its project or package references. The orchestration method
 is `internal`, because it is intended to be called from the root project itself.
 
@@ -576,13 +581,13 @@ var context = new AppContext(
     builder.Configuration,
     builder.Environment);
 
-await builder.Services.ExecuteServiceRegistrationItemsAsync(context);
+await builder.Services.AddServiceRegistrationItemsAsync(context);
 ```
 
 | Host call                                       | Executes                                                                             |
 |-------------------------------------------------|--------------------------------------------------------------------------------------|
-| `ExecuteServiceRegistrationItemsAsync()`        | Registrations implementing `IServiceRegistration`                                    |
-| `ExecuteServiceRegistrationItemsAsync(context)` | Registrations implementing `IServiceRegistration<TContext>` where `TContext` matches |
+| `AddServiceRegistrationItemsAsync()`        | Registrations implementing `IServiceRegistration`                                    |
+| `AddServiceRegistrationItemsAsync(context)` | Registrations implementing `IServiceRegistration<TContext>` where `TContext` matches |
 
 ## Opt out of source generation
 
@@ -617,7 +622,7 @@ Set `DisableServiceRegistrationGenerator` to `true` when you do not use `[Servic
 ```
 
 This disables generated service-registration aggregators and root methods such as
-`ExecuteServiceRegistrationItemsAsync(...)`.
+`AddServiceRegistrationItemsAsync(...)`.
 
 To disable both generators:
 

@@ -4,11 +4,11 @@ using TrialWebApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
-await builder.Services.ExecuteServiceRegistrationItemsAsync();
-await builder.Services.ExecuteServiceRegistrationItemsAsync(TimeOnly.FromDateTime(DateTime.Now));
-await builder.Services.ExecuteServiceRegistrationItemsAsync("demo");
-await builder.Services.ExecuteServiceRegistrationItemsAsync(("demo", 13));
-await builder.Services.ExecuteServiceRegistrationItemsAsync(("demo", decimal.MaxValue));
+await builder.Services.AddServiceRegistrationItemsAsync();
+await builder.Services.AddServiceRegistrationItemsAsync(TimeOnly.FromDateTime(DateTime.Now));
+await builder.Services.AddServiceRegistrationItemsAsync("demo");
+await builder.Services.AddServiceRegistrationItemsAsync(("demo", 13));
+await builder.Services.AddServiceRegistrationItemsAsync(("demo", decimal.MaxValue));
 
 var app = builder.Build();
 
