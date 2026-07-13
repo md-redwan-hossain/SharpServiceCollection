@@ -17,9 +17,12 @@ public sealed class SharpServiceCollectionCodeFixProvider : CodeFixProvider
     private const string InjectableDependencyName = "InjectableDependency";
     private const string ServiceRegistrationItemName = "ServiceRegistrationItem";
     private const string TryAddPropertyName = "TryAdd";
-    private const string InstanceLifetimeTypeName = "global::SharpServiceCollection.Enums.InstanceLifetime";
-    private const string ResolveByTypeName = "global::SharpServiceCollection.Enums.ResolveBy";
-    private const string ServiceRegistrationInterfaceTypeName = "global::SharpServiceCollection.Interfaces.IServiceRegistration";
+    private const string InstanceLifetimeTypeName = "InstanceLifetime";
+    private const string ResolveByTypeName = "ResolveBy";
+    private const string EnumsNamespaceName = "SharpServiceCollection.Enums";
+    private const string ServiceRegistrationNamespaceName = "SharpServiceCollection.Interfaces";
+    private const string ServiceRegistrationInterfaceName = "IServiceRegistration";
+    private const string ServiceRegistrationInterfaceQualifiedName = "global::SharpServiceCollection.Interfaces.IServiceRegistration";
     private const string AddServiceRegistrationInterfaceTitle = "Implement IServiceRegistration interface";
     private const string AddServiceRegistrationInterfaceEquivalenceKey = "AddServiceRegistrationInterface";
     private const string SetTryAddTitle = "Set TryAdd to true";
@@ -233,7 +236,16 @@ public sealed class SharpServiceCollectionCodeFixProvider : CodeFixProvider
         var oldArgument = arguments.Value[argumentIndex];
         var replacement = SyntaxFactory.AttributeArgument(SyntaxFactory.ParseExpression(replacementText))
             .WithTriviaFrom(oldArgument);
-        return document.WithSyntaxRoot(root.ReplaceNode(attribute, attribute.ReplaceNode(oldArgument, replacement)));
+        var updatedRoot = root.ReplaceNode(attribute, attribute.ReplaceNode(oldArgument, replacement));
+        if (updatedRoot is CompilationUnitSyntax compilationUnit &&
+            !compilationUnit.Usings.Any(usingDirective =>
+                usingDirective.Name?.ToString() == EnumsNamespaceName))
+        {
+            updatedRoot = compilationUnit.AddUsings(
+                SyntaxFactory.UsingDirective(SyntaxFactory.ParseName(EnumsNamespaceName)));
+        }
+
+        return document.WithSyntaxRoot(updatedRoot);
     }
 
     private static async Task<Document> MakeSealedAsync(
@@ -266,9 +278,9 @@ public sealed class SharpServiceCollectionCodeFixProvider : CodeFixProvider
             return document;
         }
 
-        var interfaceType = SyntaxFactory.ParseTypeName(ServiceRegistrationInterfaceTypeName);
+        var interfaceType = SyntaxFactory.IdentifierName(ServiceRegistrationInterfaceName);
         if (classDeclaration.BaseList?.Types.Any(type =>
-                type.Type.ToString() == ServiceRegistrationInterfaceTypeName) == true)
+                type.Type.ToString() is ServiceRegistrationInterfaceName or ServiceRegistrationInterfaceQualifiedName) == true)
         {
             return document;
         }
@@ -279,7 +291,16 @@ public sealed class SharpServiceCollectionCodeFixProvider : CodeFixProvider
                 SyntaxFactory.SingletonSeparatedList<BaseTypeSyntax>(interfaceBaseType)))
             : classDeclaration.WithBaseList(classDeclaration.BaseList.AddTypes(interfaceBaseType));
 
-        return document.WithSyntaxRoot(root.ReplaceNode(classDeclaration, updated));
+        var updatedRoot = root.ReplaceNode(classDeclaration, updated);
+        if (updatedRoot is CompilationUnitSyntax compilationUnit &&
+            !compilationUnit.Usings.Any(usingDirective =>
+                usingDirective.Name?.ToString() == ServiceRegistrationNamespaceName))
+        {
+            updatedRoot = compilationUnit.AddUsings(
+                SyntaxFactory.UsingDirective(SyntaxFactory.ParseName(ServiceRegistrationNamespaceName)));
+        }
+
+        return document.WithSyntaxRoot(updatedRoot);
     }
 
     private static async Task<Document> RemoveServiceRegistrationAttributeAsync(

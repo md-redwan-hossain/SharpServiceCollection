@@ -41,7 +41,9 @@ public sealed class SharpServiceCollectionCodeFixProviderTests
         var fixedCode = await ApplyFixAsync(code, "SSC002", "Resolve by implementation type",
             code.IndexOf('['));
 
+        Assert.Contains("using SharpServiceCollection.Enums;", fixedCode);
         Assert.Contains("ResolveBy.Self", fixedCode);
+        Assert.DoesNotContain("global::SharpServiceCollection.Enums", fixedCode);
     }
 
     [Fact]
@@ -51,7 +53,9 @@ public sealed class SharpServiceCollectionCodeFixProviderTests
 
         var fixedCode = await ApplyFixAsync(code, "SSC003", "Use Scoped", code.IndexOf('['));
 
+        Assert.Contains("using SharpServiceCollection.Enums;", fixedCode);
         Assert.Contains("InstanceLifetime.Scoped", fixedCode);
+        Assert.DoesNotContain("global::SharpServiceCollection.Enums", fixedCode);
     }
 
     [Fact]
@@ -62,7 +66,9 @@ public sealed class SharpServiceCollectionCodeFixProviderTests
         var fixedCode = await ApplyFixAsync(code, "SSC004", "Use ImplementedInterface",
             code.IndexOf('['));
 
+        Assert.Contains("using SharpServiceCollection.Enums;", fixedCode);
         Assert.Contains("ResolveBy.ImplementedInterface", fixedCode);
+        Assert.DoesNotContain("global::SharpServiceCollection.Enums", fixedCode);
     }
 
     [Fact]
@@ -87,7 +93,8 @@ public sealed class SharpServiceCollectionCodeFixProviderTests
             "Implement IServiceRegistration interface",
             code.IndexOf("class", StringComparison.Ordinal));
 
-        Assert.Contains("IServiceRegistration", fixedCode);
+        Assert.Contains("using SharpServiceCollection.Interfaces;", fixedCode);
+        Assert.Contains("public sealed class Service : IServiceRegistration", fixedCode);
     }
 
     private static async Task<string> ApplyFixAsync(
