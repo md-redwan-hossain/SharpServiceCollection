@@ -22,7 +22,10 @@ public sealed class SharpServiceCollectionCodeFixProvider : CodeFixProvider
     private const string EnumsNamespaceName = "SharpServiceCollection.Enums";
     private const string ServiceRegistrationNamespaceName = "SharpServiceCollection.Interfaces";
     private const string ServiceRegistrationInterfaceName = "IServiceRegistration";
-    private const string ServiceRegistrationInterfaceQualifiedName = "global::SharpServiceCollection.Interfaces.IServiceRegistration";
+
+    private const string ServiceRegistrationInterfaceQualifiedName =
+        "global::SharpServiceCollection.Interfaces.IServiceRegistration";
+
     private const string AddServiceRegistrationInterfaceTitle = "Implement IServiceRegistration interface";
     private const string AddServiceRegistrationInterfaceEquivalenceKey = "AddServiceRegistrationInterface";
     private const string SetTryAddTitle = "Set TryAdd to true";
@@ -238,8 +241,7 @@ public sealed class SharpServiceCollectionCodeFixProvider : CodeFixProvider
             .WithTriviaFrom(oldArgument);
         var updatedRoot = root.ReplaceNode(attribute, attribute.ReplaceNode(oldArgument, replacement));
         if (updatedRoot is CompilationUnitSyntax compilationUnit &&
-            !compilationUnit.Usings.Any(usingDirective =>
-                usingDirective.Name?.ToString() == EnumsNamespaceName))
+            compilationUnit.Usings.All(usingDirective => usingDirective.Name?.ToString() != EnumsNamespaceName))
         {
             updatedRoot = compilationUnit.AddUsings(
                 SyntaxFactory.UsingDirective(SyntaxFactory.ParseName(EnumsNamespaceName)));
@@ -280,7 +282,8 @@ public sealed class SharpServiceCollectionCodeFixProvider : CodeFixProvider
 
         var interfaceType = SyntaxFactory.IdentifierName(ServiceRegistrationInterfaceName);
         if (classDeclaration.BaseList?.Types.Any(type =>
-                type.Type.ToString() is ServiceRegistrationInterfaceName or ServiceRegistrationInterfaceQualifiedName) == true)
+                type.Type.ToString() is ServiceRegistrationInterfaceName
+                    or ServiceRegistrationInterfaceQualifiedName) == true)
         {
             return document;
         }
@@ -292,9 +295,8 @@ public sealed class SharpServiceCollectionCodeFixProvider : CodeFixProvider
             : classDeclaration.WithBaseList(classDeclaration.BaseList.AddTypes(interfaceBaseType));
 
         var updatedRoot = root.ReplaceNode(classDeclaration, updated);
-        if (updatedRoot is CompilationUnitSyntax compilationUnit &&
-            !compilationUnit.Usings.Any(usingDirective =>
-                usingDirective.Name?.ToString() == ServiceRegistrationNamespaceName))
+        if (updatedRoot is CompilationUnitSyntax compilationUnit && compilationUnit.Usings.All(usingDirective =>
+                usingDirective.Name?.ToString() != ServiceRegistrationNamespaceName))
         {
             updatedRoot = compilationUnit.AddUsings(
                 SyntaxFactory.UsingDirective(SyntaxFactory.ParseName(ServiceRegistrationNamespaceName)));
