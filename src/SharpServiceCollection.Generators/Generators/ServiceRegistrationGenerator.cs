@@ -29,9 +29,8 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
 
     private const string GeneratedFileName = "SharpServiceCollection.ServiceRegistration.g.cs";
     private const string AggregatorGeneratedFileName = "SharpServiceCollection.ServiceRegistration.Aggregator.g.cs";
-    private const string OrderPropertyName = "Order";
+    private const string PriorityPropertyName = "Priority";
     private const string RootPropertyName = "ServiceRegistrationRoot";
-    private const string RootDescSortOrderPropertyName = "ServiceRegistrationRootDescSortOrder";
     private const string GeneratedMethodName = "AddServiceRegistrationItemsAsync";
     private const string RegisterMethodName = "RegisterAsync";
 
@@ -75,8 +74,6 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         isEnabledByDefault: true,
         description: ServiceRegistrationMustImplementInterfaceDescription,
         helpLinkUri: string.Format(SharedConsts.HelpLinkUriFormat, "service-registration"));
-
-
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -129,39 +126,24 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
                     out var value) &&
                 string.Equals(value, "true", StringComparison.OrdinalIgnoreCase));
 
-        var isDescendingRootSortOrder = context.AnalyzerConfigOptionsProvider
-            .Select(static (provider, _) =>
-            {
-                if (!provider.GlobalOptions.TryGetValue(
-                        "build_property." + RootDescSortOrderPropertyName,
-                        out var value))
-                {
-                    return true;
-                }
-
-                return !bool.TryParse(value, out var descending) || descending;
-            });
-
         var rootSource = context.CompilationProvider
             .Combine(collectedCandidates)
             .Combine(isRoot)
-            .Combine(isDescendingRootSortOrder)
             .Combine(isDisabled);
 
         context.RegisterSourceOutput(
             rootSource,
             static (spc, input) =>
             {
-                if (input.Right || !input.Left.Left.Right)
+                if (input.Right || !input.Left.Right)
                 {
                     return;
                 }
 
                 GenerateRootExtensions(
                     spc,
-                    input.Left.Left.Left.Left,
-                    input.Left.Left.Left.Right,
-                    input.Left.Right);
+                    input.Left.Left.Left,
+                    input.Left.Left.Right);
             });
     }
 
@@ -215,7 +197,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         }
 
         var implementationTypeName = classSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-        var order = GetOrder(classSymbol);
+        var priority = GetPriority(classSymbol);
         var descriptors = ImmutableArray.CreateBuilder<RegistrationDescriptor>(2);
 
         foreach (var implementedInterface in interfaces)
@@ -235,7 +217,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
                 ImplementationTypeName = implementationTypeName,
                 ContextType = contextType,
                 ContextTypeName = contextTypeName,
-                Order = order
+                Priority = priority
             });
         }
 
@@ -243,7 +225,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         {
             Descriptors = descriptors.ToImmutable(),
             Diagnostics = []
-        }; 
+        };
     }
 
     private static bool IsServiceRegistrationInterface(INamedTypeSymbol interfaceSymbol)
@@ -261,7 +243,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
                libraryNamespace.ContainingNamespace.IsGlobalNamespace;
     }
 
-    private static uint GetOrder(INamedTypeSymbol classSymbol)
+    private static int GetPriority(INamedTypeSymbol classSymbol)
     {
         foreach (var attribute in classSymbol.GetAttributes())
         {
@@ -274,12 +256,12 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
 
             foreach (var argument in attribute.NamedArguments)
             {
-                if (argument.Key == OrderPropertyName)
+                if (argument.Key == PriorityPropertyName)
                 {
                     return argument.Value.Value switch
                     {
-                        uint value => value,
-                        int value and >= 0 => (uint)value,
+                        int value => value,
+                        uint value when value <= int.MaxValue => (int)value,
                         _ => 0
                     };
                 }
@@ -320,8 +302,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
     private static void GenerateRootExtensions(
         SourceProductionContext context,
         Compilation compilation,
-        ImmutableArray<RegistrationAnalysis> analyses,
-        bool isDescendingRootSortOrder)
+        ImmutableArray<RegistrationAnalysis> analyses)
     {
         var localDescriptors = GetDescriptors(analyses);
         var referencedAggregators = FindReferencedAggregators(compilation);
@@ -334,8 +315,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         var source = BuildRootSource(
             compilation.AssemblyName,
             localDescriptors,
-            referencedAggregators,
-            isDescendingRootSortOrder);
+            referencedAggregators);
         context.AddSource(GeneratedFileName, source);
     }
 
@@ -456,7 +436,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
                     DeclaredAccessibility: Accessibility.Public,
                     Parameters.Length: 1 or 2
                 } registrationMethod ||
-                !TryGetOrder(registrationMethod.Name, out var order) ||
+                !TryGetPriority(registrationMethod.Name, out var priority) ||
                 registrationMethod.Parameters[0].Type.ToDisplayString(
                     SymbolDisplayFormat.FullyQualifiedFormat) != ServiceCollectionMetadataName)
             {
@@ -472,38 +452,66 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
                 AggregatorTypeName = aggregatorTypeName,
                 MethodName = registrationMethod.Name,
                 ContextTypeName = contextTypeName,
-                Order = order,
+                Priority = priority,
                 SortKey = $"{aggregatorTypeName}.{registrationMethod.Name}"
             });
         }
     }
 
-    private static bool TryGetOrder(string methodName, out uint order)
+    private static bool TryGetPriority(string methodName, out int priority)
     {
         const string prefix = RegisterMethodName + "_";
         if (!methodName.StartsWith(prefix, StringComparison.Ordinal))
         {
-            order = 0;
+            priority = 0;
             return false;
         }
 
-        var orderStart = prefix.Length;
-        var orderEnd = methodName.IndexOf('_', orderStart);
-        var orderText = orderEnd < 0
-            ? methodName.Substring(orderStart)
-            : methodName.Substring(orderStart, orderEnd - orderStart);
+        var priorityStart = prefix.Length;
+        var priorityEnd = methodName.IndexOf('_', priorityStart);
+        var priorityText = priorityEnd < 0
+            ? methodName.Substring(priorityStart)
+            : methodName.Substring(priorityStart, priorityEnd - priorityStart);
 
-        return uint.TryParse(orderText, out order);
+        const string negPrefix = "neg";
+        if (priorityText.StartsWith(negPrefix, StringComparison.Ordinal) &&
+            long.TryParse(priorityText.Substring(negPrefix.Length), out var magnitude))
+        {
+            if (magnitude == (long)int.MaxValue + 1)
+            {
+                priority = int.MinValue;
+                return true;
+            }
+
+            if (magnitude is >= 0 and <= int.MaxValue)
+            {
+                priority = -(int)magnitude;
+                return true;
+            }
+        }
+
+        return int.TryParse(priorityText, out priority);
+    }
+
+    private static string FormatPriorityToken(int priority)
+    {
+        if (priority >= 0)
+        {
+            return priority.ToString();
+        }
+
+        // '-' is not valid in a C# identifier; encode negatives as neg{magnitude}.
+        return "neg" + (-(long)priority).ToString();
     }
 
     private static int CompareDescriptors(
         RegistrationDescriptor left,
         RegistrationDescriptor right)
     {
-        var orderComparison = left.Order.CompareTo(right.Order);
+        var priorityComparison = left.Priority.CompareTo(right.Priority);
 
-        return orderComparison != 0
-            ? orderComparison
+        return priorityComparison != 0
+            ? priorityComparison
             : StringComparer.Ordinal.Compare(
                 left.ImplementationTypeName,
                 right.ImplementationTypeName);
@@ -534,12 +542,11 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
     private static string BuildRootSource(
         string? assemblyName,
         IReadOnlyList<RegistrationDescriptor> localDescriptors,
-        IReadOnlyList<AggregatorMethod> aggregators,
-        bool isDescendingRootSortOrder)
+        IReadOnlyList<AggregatorMethod> aggregators)
     {
         var groups = new Dictionary<string, List<RootRegistrationCall>>(StringComparer.Ordinal);
 
-        // Call the host aggregator's RegisterAsync_{Order}_{index} methods (already
+        // Call the host aggregator's RegisterAsync_{Priority}_{index} methods (already
         // emitted by GenerateProjectAggregator) instead of inlining new Type().
         if (localDescriptors.Count > 0 && !string.IsNullOrWhiteSpace(assemblyName))
         {
@@ -549,13 +556,13 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
             for (var index = 0; index < localDescriptors.Count; index++)
             {
                 var descriptor = localDescriptors[index];
-                var methodName = RegisterMethodName + "_" + descriptor.Order + "_" + index;
+                var methodName = RegisterMethodName + "_" + FormatPriorityToken(descriptor.Priority) + "_" + index;
                 AddRootCall(
                     groups,
                     descriptor.ContextTypeName,
                     $"        await {aggregatorTypeName}.{methodName}(services" +
                     (descriptor.ContextTypeName is null ? ");" : ", context);"),
-                    descriptor.Order,
+                    descriptor.Priority,
                     $"{aggregatorTypeName}.{methodName}");
             }
         }
@@ -568,16 +575,13 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
                 aggregator.ContextTypeName is null
                     ? $"        await {aggregator.AggregatorTypeName}.{aggregator.MethodName}(services);"
                     : $"        await {aggregator.AggregatorTypeName}.{aggregator.MethodName}(services, context);",
-                aggregator.Order,
+                aggregator.Priority,
                 aggregator.SortKey);
         }
 
         foreach (var calls in groups.Values)
         {
-            calls.Sort((left, right) => CompareRootRegistrationCalls(
-                left,
-                right,
-                isDescendingRootSortOrder));
+            calls.Sort(CompareRootRegistrationCalls);
         }
 
         var orderedGroups = new List<KeyValuePair<string, List<RootRegistrationCall>>>(groups);
@@ -609,7 +613,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         for (var index = 0; index < descriptors.Count; index++)
         {
             var descriptor = descriptors[index];
-            var methodName = RegisterMethodName + "_" + descriptor.Order + "_" + index;
+            var methodName = RegisterMethodName + "_" + FormatPriorityToken(descriptor.Priority) + "_" + index;
             AppendAggregatorMethod(builder, methodName, descriptor);
         }
     }
@@ -651,7 +655,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         Dictionary<string, List<RootRegistrationCall>> groups,
         string? contextTypeName,
         string call,
-        uint order,
+        int priority,
         string sortKey)
     {
         var key = contextTypeName ?? string.Empty;
@@ -664,22 +668,20 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         calls.Add(new RootRegistrationCall
         {
             Call = call,
-            Order = order,
+            Priority = priority,
             SortKey = sortKey
         });
     }
 
     private static int CompareRootRegistrationCalls(
         RootRegistrationCall left,
-        RootRegistrationCall right,
-        bool isDescendingRootSortOrder)
+        RootRegistrationCall right)
     {
-        var orderComparison = isDescendingRootSortOrder
-            ? right.Order.CompareTo(left.Order)
-            : left.Order.CompareTo(right.Order);
+        // Higher Priority runs first; reverse with a negative Priority if needed.
+        var priorityComparison = right.Priority.CompareTo(left.Priority);
 
-        return orderComparison != 0
-            ? orderComparison
+        return priorityComparison != 0
+            ? priorityComparison
             : StringComparer.Ordinal.Compare(left.SortKey, right.SortKey);
     }
 

@@ -158,7 +158,7 @@ public static class ServiceCollectionExtensions
     {
         return assembly.GetTypes()
             .SelectMany(t => getAttributes(t).Select(a => (ImplType: t, Attribute: a)))
-            .OrderBy(e => e.Attribute.Order)
+            .OrderByDescending(e => e.Attribute.Priority)
             .ThenBy(e => e.ImplType.Name);
     }
 
@@ -169,8 +169,8 @@ public static class ServiceCollectionExtensions
         return assembly.GetTypes()
             .SelectMany(t => GetAttributeImplementations(t, genericAttributeDefinition)
                 .Select(a => (ImplType: t, Attribute: a)))
-            .Where(e => e.Attribute is IServiceOrder)
-            .OrderBy(e => ((IServiceOrder)e.Attribute).Order)
+            .Where(e => e.Attribute is IServicePriority)
+            .OrderByDescending(e => ((IServicePriority)e.Attribute).Priority)
             .ThenBy(e => e.ImplType.Name);
     }
 

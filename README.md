@@ -214,7 +214,7 @@ All registration attributes support these options:
 | `TryAdd`     |  `true` | Avoid replacing an existing registration when `true`; use the regular `Add*` API when `false` |
 | `Key`        |  `null` | Register a keyed service                                                                      |
 | `Enumerable` | `false` | Add the implementation to an enumerable service collection                                    |
-| `Order`      |     `0` | Control processing order when registrations compete                                           |
+| `Priority`  |     `0` | Control processing order when registrations compete (higher runs first)                       |
 
 #### Keyed services
 
@@ -272,21 +272,22 @@ public sealed class OrderService(IEnumerable<IValidator<Order>> validators)
 
 `Enumerable = true` requires `TryAdd = true`.
 
-#### Duplicate registrations and `Order`
+#### Duplicate registrations and `Priority`
 
-Registrations are processed by `Order` ascending, followed by class name ascending.
+Registrations are processed by `Priority` descending (higher first), followed by class name ascending.
 
 - With `TryAdd = true`, the first matching registration wins.
 - With `TryAdd = false`, the regular `Add*` method is used, so later registrations can replace the default service
   resolution.
+- Use a negative `Priority` when a registration should run after the default (`0`).
 
 ```csharp
-[InjectableDependency<IWorker>(InstanceLifetime.Scoped, Order = 1)]
+[InjectableDependency<IWorker>(InstanceLifetime.Scoped, Priority = 2)]
 public sealed class PrimaryWorker : IWorker
 {
 }
 
-[InjectableDependency<IWorker>(InstanceLifetime.Scoped, Order = 2)]
+[InjectableDependency<IWorker>(InstanceLifetime.Scoped, Priority = 1)]
 public sealed class BackupWorker : IWorker
 {
 }
@@ -398,8 +399,8 @@ MyApp.Payments                    # feature module
 ```
 
 Each project can split its registration items across as many meaningful files as needed. The generator combines all
-registration items within each project into that project's aggregator (`RegisterAsync_{Order}_{index}` methods). The host
-root then calls those aggregator methods from the host project and from referenced projects or packages, sorted by `Order`.
+registration items within each project into that project's aggregator (`RegisterAsync_{Priority}_{index}` methods). The host
+root then calls those aggregator methods from the host project and from referenced projects or packages, sorted by `Priority`.
 
 ### Why this matters
 
@@ -419,7 +420,7 @@ That approach becomes a maintenance problem as files and projects are added: the
 registration item is introduced, and it must preserve the correct execution order.
 
 With `[ServiceRegistrationItem]`, the generators discover registration items across all files in the host and referenced
-projects, aggregate them, sort them by `Order`, and generate the orchestration method. The host calls one method instead:
+projects, aggregate them, sort them by `Priority`, and generate the orchestration method. The host calls one method instead:
 
 ```csharp
 await builder.Services.AddServiceRegistrationItemsAsync();
@@ -496,9 +497,8 @@ The generator discovers classes that:
 
 The class can have any name. It does not need to be named `ServiceRegistration`.
 
-`Order` controls execution order. Higher order values run first by default. Registrations with the same order are sorted
-by implementation type name. Set `ServiceRegistrationRootDescSortOrder` to `false` in the root project's `.csproj` to
-make lower order values run first.
+`Priority` controls execution order. Higher priority values run first. Registrations with the same priority are sorted
+by implementation type name. Use a negative `Priority` when a registration should run after the default (`0`).
 
 ### Enable the host project
 
@@ -508,8 +508,6 @@ Set `ServiceRegistrationRoot` in the host project's `.csproj` file:
 
 <PropertyGroup>
     <ServiceRegistrationRoot>true</ServiceRegistrationRoot>
-    <!-- Optional; defaults to true. Set false for ascending order. -->
-    <ServiceRegistrationRootDescSortOrder>false</ServiceRegistrationRootDescSortOrder>
 </PropertyGroup>
 ```
 
@@ -542,7 +540,7 @@ app.Run();
 The source generator creates a small public aggregator in every project that contains service registrations. A project with
 `ServiceRegistrationRoot` also gets the `AddServiceRegistrationItemsAsync` orchestration extension. That method calls the
 host project's own aggregator methods together with aggregators discovered through its project or package references,
-sorted by `Order`. The orchestration method is `internal`, because it is intended to be called from the root project itself.
+sorted by `Priority`. The orchestration method is `internal`, because it is intended to be called from the root project itself.
 
 ### Use a registration context
 
@@ -559,7 +557,7 @@ public sealed record AppContext(
     IConfiguration Configuration,
     IHostEnvironment Environment);
 
-[ServiceRegistrationItem(Order = 20)]
+[ServiceRegistrationItem(Priority = 20)]
 public sealed class PaymentsRegistration : IServiceRegistration<AppContext>
 {
     public Task RegisterAsync(

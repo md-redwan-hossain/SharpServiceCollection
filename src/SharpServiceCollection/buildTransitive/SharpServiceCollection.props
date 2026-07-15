@@ -1,7 +1,6 @@
 <Project>
   <ItemGroup>
     <CompilerVisibleProperty Include="ServiceRegistrationRoot" />
-    <CompilerVisibleProperty Include="ServiceRegistrationRootDescSortOrder" />
     <CompilerVisibleProperty Include="DisableInjectableDependencyGenerator" />
     <CompilerVisibleProperty Include="DisableServiceRegistrationGenerator" />
   </ItemGroup>

@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
+using SharpServiceCollection.Attributes;
 using SharpServiceCollection.Constants;
 using SharpServiceCollection.Enums;
 using SharpServiceCollection.Helpers;
@@ -48,10 +49,10 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
 
     private static class AttributeProperties
     {
-        internal const string TryAdd = "TryAdd";
-        internal const string Enumerable = "Enumerable";
-        internal const string Key = "Key";
-        internal const string Order = "Order";
+        internal const string TryAdd = nameof(InjectableDependencyAttribute.TryAdd);
+        internal const string Enumerable = nameof(InjectableDependencyAttribute.Enumerable);
+        internal const string Key = nameof(InjectableDependencyAttribute.Key);
+        internal const string Priority = nameof(InjectableDependencyAttribute.Priority);
     }
 
     private static class GeneratedCode
@@ -259,7 +260,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
         CollectDescriptors(genericResults, descriptors, seen, context);
 
         var sorted = descriptors
-            .OrderBy(r => r.Order)
+            .OrderByDescending(r => r.Priority)
             .ThenBy(r => r.ImplementationNameSortKey, StringComparer.Ordinal)
             .ToList();
 
@@ -371,7 +372,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
         var tryAdd = GetNamedBool(attribute, AttributeProperties.TryAdd, defaultValue: true);
         var enumerable = GetNamedBool(attribute, AttributeProperties.Enumerable, defaultValue: false);
         var key = GetNamedString(attribute, AttributeProperties.Key);
-        var order = GetNamedUInt(attribute, AttributeProperties.Order, defaultValue: 0);
+        var priority = GetNamedInt(attribute, AttributeProperties.Priority, defaultValue: 0);
 
         return new RegistrationModel
         {
@@ -382,7 +383,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
             TryAdd = tryAdd,
             Enumerable = enumerable,
             Key = key,
-            Order = order,
+            Priority = priority,
             Location = attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation()
         };
     }
@@ -417,7 +418,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
         var tryAdd = GetNamedBool(attribute, AttributeProperties.TryAdd, defaultValue: true);
         var enumerable = GetNamedBool(attribute, AttributeProperties.Enumerable, defaultValue: false);
         var key = GetNamedString(attribute, AttributeProperties.Key);
-        var order = GetNamedUInt(attribute, AttributeProperties.Order, defaultValue: 0);
+        var priority = GetNamedInt(attribute, AttributeProperties.Priority, defaultValue: 0);
 
         return new RegistrationModel
         {
@@ -428,7 +429,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
             TryAdd = tryAdd,
             Enumerable = enumerable,
             Key = key,
-            Order = order,
+            Priority = priority,
             Location = attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation()
         };
     }
@@ -489,14 +490,21 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
         return string.Empty;
     }
 
-    private static uint GetNamedUInt(AttributeData attribute, string key, uint defaultValue)
+    private static int GetNamedInt(AttributeData attribute, string key, int defaultValue)
     {
         foreach (var argument in attribute.NamedArguments)
         {
-            if (argument.Key == key && argument.Value.Value is uint uintValue)
+            if (argument.Key != key)
             {
-                return uintValue;
+                continue;
             }
+
+            return argument.Value.Value switch
+            {
+                int intValue => intValue,
+                uint uintValue when uintValue <= int.MaxValue => (int)uintValue,
+                _ => defaultValue
+            };
         }
 
         return defaultValue;
@@ -588,7 +596,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
             TryAdd = registration.TryAdd,
             Enumerable = registration.Enumerable,
             Key = registration.Key,
-            Order = registration.Order,
+            Priority = registration.Priority,
             ImplementationNameSortKey = implementationType.Name
         };
     }

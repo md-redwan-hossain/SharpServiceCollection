@@ -490,7 +490,7 @@ public class ReflectionApiTests
     }
 
     [Fact]
-    public void OrderTryAdd_LowerOrderWins_OverClassName()
+    public void PriorityTryAdd_HigherPriorityWins_OverClassName()
     {
         // Arrange
         var serviceCollection = new ServiceCollection();
@@ -500,7 +500,7 @@ public class ReflectionApiTests
         serviceCollection.AddServicesFromAssembly(assembly);
         var serviceProvider = serviceCollection.BuildServiceProvider();
 
-        // Assert — ZebraWinsTryAddResolver (Order = 1) wins over AlphaLosesTryAddResolver (Order = 2)
+        // Assert — ZebraWinsTryAddResolver (Priority = 2) wins over AlphaLosesTryAddResolver (Priority = 1)
         // despite Alpha sorting first by class name
         var service = serviceProvider.GetService<IOrderTryResolver>();
         service.ShouldNotBeNull();
@@ -508,7 +508,7 @@ public class ReflectionApiTests
     }
 
     [Fact]
-    public void OrderAdd_HigherOrderWins_OverClassName()
+    public void PriorityAdd_LowerPriorityWins_OverClassName()
     {
         // Arrange
         var serviceCollection = new ServiceCollection();
@@ -518,7 +518,7 @@ public class ReflectionApiTests
         serviceCollection.AddServicesFromAssembly(assembly);
         var serviceProvider = serviceCollection.BuildServiceProvider();
 
-        // Assert — AlphaWinsAddResolver (Order = 2) wins over ZebraLosesAddResolver (Order = 1)
+        // Assert — AlphaWinsAddResolver (Priority = 1) wins over ZebraLosesAddResolver (Priority = 2)
         // despite Zebra sorting first by class name
         var service = serviceProvider.GetService<IOrderAddResolver>();
         service.ShouldNotBeNull();

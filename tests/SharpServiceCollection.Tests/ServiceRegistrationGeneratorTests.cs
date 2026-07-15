@@ -31,13 +31,12 @@ public sealed class ServiceRegistrationGeneratorTests
                     public Task RegisterAsync(IServiceCollection services) => Task.CompletedTask;
                 }
 
-                [ServiceRegistrationItem(Order = 1)]
+                [ServiceRegistrationItem(Priority = 1)]
                 public sealed class ConfigureOpenTelemetry : IServiceRegistration
                 {
                     public Task RegisterAsync(IServiceCollection services) => Task.CompletedTask;
                 }
-                """,
-            descending: true);
+                """);
 
         Assert.Contains(
             "ServiceRegistrationAggregator_Api_Host",
@@ -63,18 +62,18 @@ public sealed class ServiceRegistrationGeneratorTests
             root,
             StringComparison.Ordinal);
 
-        var orderOne = root.IndexOf(
+        var priorityOne = root.IndexOf(
             "ServiceRegistrationAggregator_Api_Host.RegisterAsync_1_1",
             StringComparison.Ordinal);
-        var orderZero = root.IndexOf(
+        var priorityZero = root.IndexOf(
             "ServiceRegistrationAggregator_Api_Host.RegisterAsync_0_0",
             StringComparison.Ordinal);
-        Assert.True(orderOne >= 0 && orderZero >= 0);
-        Assert.True(orderOne < orderZero, "Descending Order should call Order=1 before Order=0");
+        Assert.True(priorityOne >= 0 && priorityZero >= 0);
+        Assert.True(priorityOne < priorityZero, "Higher Priority should run before lower Priority");
     }
 
     [Fact]
-    public void Root_SortsHostAggregatorWithReferencedModuleByOrder()
+    public void Root_SortsHostAggregatorWithReferencedModuleByPriority()
     {
         var moduleReference = CompileModuleAggregator(
             """
@@ -117,13 +116,12 @@ public sealed class ServiceRegistrationGeneratorTests
                     public Task RegisterAsync(IServiceCollection services) => Task.CompletedTask;
                 }
 
-                [ServiceRegistrationItem(Order = 1)]
+                [ServiceRegistrationItem(Priority = 1)]
                 public sealed class ConfigureOpenTelemetry : IServiceRegistration
                 {
                     public Task RegisterAsync(IServiceCollection services) => Task.CompletedTask;
                 }
                 """,
-            descending: true,
             additionalReferences: [moduleReference]);
 
         Assert.DoesNotContain("new global::Api.Host", root, StringComparison.Ordinal);
@@ -131,26 +129,64 @@ public sealed class ServiceRegistrationGeneratorTests
         var highModule = root.IndexOf(
             "ServiceRegistrationAggregator_Common_Application.RegisterAsync_9000_0",
             StringComparison.Ordinal);
-        var hostOrderOne = root.IndexOf(
+        var hostPriorityOne = root.IndexOf(
             "ServiceRegistrationAggregator_Api_Host.RegisterAsync_1_1",
             StringComparison.Ordinal);
-        var hostOrderZero = root.IndexOf(
+        var hostPriorityZero = root.IndexOf(
             "ServiceRegistrationAggregator_Api_Host.RegisterAsync_0_0",
             StringComparison.Ordinal);
         var lowModule = root.IndexOf(
             "ServiceRegistrationAggregator_Common_Application.RegisterAsync_0_1",
             StringComparison.Ordinal);
 
-        Assert.True(highModule >= 0 && hostOrderOne >= 0 && hostOrderZero >= 0 && lowModule >= 0);
-        Assert.True(highModule < hostOrderOne);
-        Assert.True(hostOrderOne < hostOrderZero);
-        Assert.True(hostOrderZero < lowModule);
+        Assert.True(highModule >= 0 && hostPriorityOne >= 0 && hostPriorityZero >= 0 && lowModule >= 0);
+        Assert.True(highModule < hostPriorityOne);
+        Assert.True(hostPriorityOne < hostPriorityZero);
+        Assert.True(hostPriorityZero < lowModule);
+    }
+
+    [Fact]
+    public void Root_NegativePriority_RunsAfterZero_EncodedAsNPrefix()
+    {
+        var (aggregator, root) = RunRootGenerator(
+            assemblyName: "Api.Host",
+            source: """
+                using System.Threading.Tasks;
+                using Microsoft.Extensions.DependencyInjection;
+                using SharpServiceCollection.Attributes;
+                using SharpServiceCollection.Interfaces;
+
+                namespace Api.Host.ServiceRegistrations;
+
+                [ServiceRegistrationItem]
+                public sealed class ConfigureMvc : IServiceRegistration
+                {
+                    public Task RegisterAsync(IServiceCollection services) => Task.CompletedTask;
+                }
+
+                [ServiceRegistrationItem(Priority = -5)]
+                public sealed class ConfigureLate : IServiceRegistration
+                {
+                    public Task RegisterAsync(IServiceCollection services) => Task.CompletedTask;
+                }
+                """);
+
+        Assert.Contains("RegisterAsync_neg5_0", aggregator, StringComparison.Ordinal);
+        Assert.Contains("RegisterAsync_0_1", aggregator, StringComparison.Ordinal);
+
+        var zero = root.IndexOf(
+            "ServiceRegistrationAggregator_Api_Host.RegisterAsync_0_1",
+            StringComparison.Ordinal);
+        var negative = root.IndexOf(
+            "ServiceRegistrationAggregator_Api_Host.RegisterAsync_neg5_0",
+            StringComparison.Ordinal);
+        Assert.True(zero >= 0 && negative >= 0);
+        Assert.True(zero < negative, "Priority 0 should run before Priority -5");
     }
 
     private static (string Aggregator, string Root) RunRootGenerator(
         string assemblyName,
         string source,
-        bool descending,
         IEnumerable<MetadataReference>? additionalReferences = null)
     {
         var compilation = CSharpCompilation.Create(
@@ -161,8 +197,7 @@ public sealed class ServiceRegistrationGeneratorTests
 
         var options = new Dictionary<string, string>
         {
-            ["build_property.ServiceRegistrationRoot"] = "true",
-            ["build_property.ServiceRegistrationRootDescSortOrder"] = descending ? "true" : "false"
+            ["build_property.ServiceRegistrationRoot"] = "true"
         };
 
         GeneratorDriver driver = CSharpGeneratorDriver.Create(

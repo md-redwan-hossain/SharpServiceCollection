@@ -10,6 +10,6 @@ internal readonly record struct ServiceRegistrationDescriptor
     public required bool TryAdd { get; init; }
     public required bool Enumerable { get; init; }
     public required string Key { get; init; }
-    public required uint Order { get; init; }
+    public required int Priority { get; init; }
     public required string ImplementationNameSortKey { get; init; }
 }

@@ -4,5 +4,5 @@ using SharpServiceCollection.Tests.TestData.Interfaces;
 
 namespace SharpServiceCollection.Tests.TestData.ConcreteTypes;
 
-[InjectableDependency<IOrderAddResolver>(InstanceLifetime.Scoped, TryAdd = false, Order = 1)]
+[InjectableDependency<IOrderAddResolver>(InstanceLifetime.Scoped, TryAdd = false, Priority = 2)]
 public class ZebraLosesAddResolver : IOrderAddResolver;

@@ -4,7 +4,7 @@ using SharpServiceCollection.Interfaces;
 
 namespace ServiceRegistration.ModuleA;
 
-[ServiceRegistrationItem(Order = 10)]
+[ServiceRegistrationItem(Priority = 10)]
 public sealed class ModuleAServiceRegistration: IServiceRegistration<string>
 {
     public Task RegisterAsync(IServiceCollection services, string context)

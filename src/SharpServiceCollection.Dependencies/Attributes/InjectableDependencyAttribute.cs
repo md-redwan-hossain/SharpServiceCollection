@@ -4,13 +4,13 @@ using SharpServiceCollection.Interfaces.Internal;
 namespace SharpServiceCollection.Attributes;
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
-public class InjectableDependencyAttribute : Attribute, IServiceLifetime, IServiceKey, ITryAddService, IServiceOrder
+public class InjectableDependencyAttribute : Attribute, IServiceLifetime, IServiceKey, ITryAddService, IServicePriority
 {
     public InstanceLifetime Lifetime { get; }
     public ResolveBy ResolveBy { get; }
     public string Key { get; set; }
     public bool TryAdd { get; set; }
-    public uint Order { get; set; }
+    public int Priority { get; set; }
 
     private bool _enumerable;
     public bool Enumerable
@@ -47,12 +47,12 @@ public class InjectableDependencyAttribute : Attribute, IServiceLifetime, IServi
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
-public class InjectableDependencyAttribute<T> : Attribute, IServiceLifetime, IServiceKey, ITryAddService, IServiceOrder
+public class InjectableDependencyAttribute<T> : Attribute, IServiceLifetime, IServiceKey, ITryAddService, IServicePriority
 {
     public InstanceLifetime Lifetime { get; }
     public bool TryAdd { get; set; }
     public string Key { get; set; }
-    public uint Order { get; set; }
+    public int Priority { get; set; }
 
     private bool _enumerable;
     public bool Enumerable
