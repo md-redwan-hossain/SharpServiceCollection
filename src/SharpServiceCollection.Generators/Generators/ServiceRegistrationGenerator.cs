@@ -331,7 +331,11 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
             return;
         }
 
-        var source = BuildRootSource(localDescriptors, referencedAggregators, isDescendingRootSortOrder);
+        var source = BuildRootSource(
+            compilation.AssemblyName,
+            localDescriptors,
+            referencedAggregators,
+            isDescendingRootSortOrder);
         context.AddSource(GeneratedFileName, source);
     }
 
@@ -528,50 +532,44 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
     }
 
     private static string BuildRootSource(
+        string? assemblyName,
         IReadOnlyList<RegistrationDescriptor> localDescriptors,
         IReadOnlyList<AggregatorMethod> aggregators,
         bool isDescendingRootSortOrder)
     {
         var groups = new Dictionary<string, List<RootRegistrationCall>>(StringComparer.Ordinal);
 
-        foreach (var descriptor in localDescriptors)
+        // Call the host aggregator's RegisterAsync_{Order}_{index} methods (already
+        // emitted by GenerateProjectAggregator) instead of inlining new Type().
+        if (localDescriptors.Count > 0 && !string.IsNullOrWhiteSpace(assemblyName))
         {
-            var contextTypeName = descriptor.ContextTypeName ?? string.Empty;
-            if (!groups.TryGetValue(contextTypeName, out var calls))
-            {
-                calls = [];
-                groups.Add(contextTypeName, calls);
-            }
+            var aggregatorTypeName =
+                $"global::{GeneratedNamespace}.{AggregatorNamePrefix}{SanitizeIdentifier(assemblyName!)}";
 
-            var call = descriptor.ContextTypeName is null
-                ? $"        await new {descriptor.ImplementationTypeName}().RegisterAsync(services);"
-                : $"        await new {descriptor.ImplementationTypeName}().RegisterAsync(services, context);";
-            calls.Add(new RootRegistrationCall
+            for (var index = 0; index < localDescriptors.Count; index++)
             {
-                Call = call,
-                Order = descriptor.Order,
-                SortKey = descriptor.ImplementationTypeName
-            });
+                var descriptor = localDescriptors[index];
+                var methodName = RegisterMethodName + "_" + descriptor.Order + "_" + index;
+                AddRootCall(
+                    groups,
+                    descriptor.ContextTypeName,
+                    $"        await {aggregatorTypeName}.{methodName}(services" +
+                    (descriptor.ContextTypeName is null ? ");" : ", context);"),
+                    descriptor.Order,
+                    $"{aggregatorTypeName}.{methodName}");
+            }
         }
 
         foreach (var aggregator in aggregators)
         {
-            var contextTypeName = aggregator.ContextTypeName ?? string.Empty;
-            if (!groups.TryGetValue(contextTypeName, out var calls))
-            {
-                calls = [];
-                groups.Add(contextTypeName, calls);
-            }
-
-            var call = aggregator.ContextTypeName is null
-                ? $"        await {aggregator.AggregatorTypeName}.{aggregator.MethodName}(services);"
-                : $"        await {aggregator.AggregatorTypeName}.{aggregator.MethodName}(services, context);";
-            calls.Add(new RootRegistrationCall
-            {
-                Call = call,
-                Order = aggregator.Order,
-                SortKey = aggregator.SortKey
-            });
+            AddRootCall(
+                groups,
+                aggregator.ContextTypeName,
+                aggregator.ContextTypeName is null
+                    ? $"        await {aggregator.AggregatorTypeName}.{aggregator.MethodName}(services);"
+                    : $"        await {aggregator.AggregatorTypeName}.{aggregator.MethodName}(services, context);",
+                aggregator.Order,
+                aggregator.SortKey);
         }
 
         foreach (var calls in groups.Values)
@@ -647,6 +645,28 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         builder.AppendLine("        return services;");
         builder.AppendLine("    }");
         builder.AppendLine();
+    }
+
+    private static void AddRootCall(
+        Dictionary<string, List<RootRegistrationCall>> groups,
+        string? contextTypeName,
+        string call,
+        uint order,
+        string sortKey)
+    {
+        var key = contextTypeName ?? string.Empty;
+        if (!groups.TryGetValue(key, out var calls))
+        {
+            calls = [];
+            groups.Add(key, calls);
+        }
+
+        calls.Add(new RootRegistrationCall
+        {
+            Call = call,
+            Order = order,
+            SortKey = sortKey
+        });
     }
 
     private static int CompareRootRegistrationCalls(

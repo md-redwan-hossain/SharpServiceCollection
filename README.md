@@ -398,8 +398,8 @@ MyApp.Payments                    # feature module
 ```
 
 Each project can split its registration items across as many meaningful files as needed. The generator combines all
-registration items within each project into that project's aggregator. The host then combines its own items with aggregators
-discovered through referenced projects or packages.
+registration items within each project into that project's aggregator (`RegisterAsync_{Order}_{index}` methods). The host
+root then calls those aggregator methods from the host project and from referenced projects or packages, sorted by `Order`.
 
 ### Why this matters
 
@@ -540,9 +540,9 @@ app.Run();
 ```
 
 The source generator creates a small public aggregator in every project that contains service registrations. A project with
-`ServiceRegistrationRoot` also gets the `AddServiceRegistrationItemsAsync` orchestration extension. It combines that
-project's local registrations with aggregators discovered through its project or package references. The orchestration method
-is `internal`, because it is intended to be called from the root project itself.
+`ServiceRegistrationRoot` also gets the `AddServiceRegistrationItemsAsync` orchestration extension. That method calls the
+host project's own aggregator methods together with aggregators discovered through its project or package references,
+sorted by `Order`. The orchestration method is `internal`, because it is intended to be called from the root project itself.
 
 ### Use a registration context
 
