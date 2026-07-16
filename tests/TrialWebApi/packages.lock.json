@@ -5,14 +5,14 @@
       "serviceregistration.modulea": {
         "type": "Project",
         "dependencies": {
-          "SharpServiceCollection": "[1.0.1, )",
+          "SharpServiceCollection": "[1.1.1, )",
           "SharpServiceCollection.Dependencies": "[1.0.0, )"
         }
       },
       "serviceregistration.moduleb": {
         "type": "Project",
         "dependencies": {
-          "SharpServiceCollection": "[1.0.1, )",
+          "SharpServiceCollection": "[1.1.1, )",
           "SharpServiceCollection.Dependencies": "[1.0.0, )"
         }
       },

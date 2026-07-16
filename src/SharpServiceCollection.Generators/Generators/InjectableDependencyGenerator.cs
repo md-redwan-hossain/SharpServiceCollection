@@ -220,7 +220,11 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
     {
         if (ctx.TargetSymbol is not INamedTypeSymbol symbol)
         {
-            return new TypeRegistrationResult { Descriptors = [], Diagnostics = [] };
+            return new TypeRegistrationResult
+            {
+                Descriptors = ImmutableArray<ServiceRegistrationDescriptor>.Empty,
+                Diagnostics = ImmutableArray<Diagnostic>.Empty
+            };
         }
 
         var registrations = new List<RegistrationModel>();
@@ -231,13 +235,17 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
 
         if (descriptors.Count == 0 && diagnostics.Count == 0)
         {
-            return new TypeRegistrationResult { Descriptors = [], Diagnostics = [] };
+            return new TypeRegistrationResult
+            {
+                Descriptors = ImmutableArray<ServiceRegistrationDescriptor>.Empty,
+                Diagnostics = ImmutableArray<Diagnostic>.Empty
+            };
         }
 
         return new TypeRegistrationResult
         {
-            Descriptors = [..descriptors],
-            Diagnostics = [..diagnostics]
+            Descriptors = descriptors.ToImmutableArray(),
+            Diagnostics = diagnostics.ToImmutableArray()
         };
     }
 

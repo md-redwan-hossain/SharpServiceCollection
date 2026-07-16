@@ -43,7 +43,7 @@ The package contains:
 - The dependency types used by the attributes
 - The Roslyn source generator under `analyzers/dotnet/cs`
 
-The source generator runs automatically when you build a project that references the package.
+The source generator requires a .NET 8+ SDK (Visual Studio 17.8+) so the Roslyn host can load the analyzer. It runs automatically when you build a project that references the package.
 
 ## How it works
 

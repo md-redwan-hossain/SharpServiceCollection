@@ -13,14 +13,17 @@ namespace SharpServiceCollection.Generators;
 public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
 {
     private const string LibraryNamespaceName = "SharpServiceCollection";
+
     private const string DisablePropertyName =
         "build_property.DisableServiceRegistrationGenerator";
+
     private const string AttributesNamespaceName = "Attributes";
     private const string InterfacesNamespaceName = "Interfaces";
     private const string GeneratedSubnamespaceName = "Generated";
 
     private const string InterfaceName = nameof(IServiceRegistration);
     private const string AttributeName = nameof(ServiceRegistrationItemAttribute);
+
     private const string AttributeMetadataName =
         $"{LibraryNamespaceName}.{AttributesNamespaceName}.{AttributeName}";
 
@@ -42,6 +45,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
 
     private const string GeneratedNamespace =
         $"{LibraryNamespaceName}.{GeneratedSubnamespaceName}";
+
     private const string AggregatorNamePrefix = "ServiceRegistrationAggregator_";
 
     private const string ServiceRegistrationMustBeSealedTitle = "Annotated class is not sealed";
@@ -191,7 +195,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
 
             return new RegistrationAnalysis
             {
-                Descriptors = [],
+                Descriptors = ImmutableArray<RegistrationDescriptor>.Empty,
                 Diagnostics = diagnostics.ToImmutable()
             };
         }
@@ -224,7 +228,7 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
         return new RegistrationAnalysis
         {
             Descriptors = descriptors.ToImmutable(),
-            Diagnostics = []
+            Diagnostics = ImmutableArray<Diagnostic>.Empty
         };
     }
 
@@ -548,10 +552,10 @@ public sealed class ServiceRegistrationGenerator : IIncrementalGenerator
 
         // Call the host aggregator's RegisterAsync_{Priority}_{index} methods (already
         // emitted by GenerateProjectAggregator) instead of inlining new Type().
-        if (localDescriptors.Count > 0 && !string.IsNullOrWhiteSpace(assemblyName))
+        if (localDescriptors.Count > 0 && !string.IsNullOrWhiteSpace(assemblyName) && assemblyName != null)
         {
             var aggregatorTypeName =
-                $"global::{GeneratedNamespace}.{AggregatorNamePrefix}{SanitizeIdentifier(assemblyName!)}";
+                $"global::{GeneratedNamespace}.{AggregatorNamePrefix}{SanitizeIdentifier(assemblyName)}";
 
             for (var index = 0; index < localDescriptors.Count; index++)
             {

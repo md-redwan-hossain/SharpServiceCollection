@@ -41,15 +41,13 @@ public sealed class SharpServiceCollectionCodeFixProvider : CodeFixProvider
     private const string UseTitlePrefix = "Use ";
     private const string UseEquivalenceKeyPrefix = "Use";
 
-    public override ImmutableArray<string> FixableDiagnosticIds =>
-    [
+    public override ImmutableArray<string> FixableDiagnosticIds { get; } = ImmutableArray.Create(
         DiagnosticIds.EnumerableRequiresTryAdd,
         DiagnosticIds.MatchingInterfaceMissing,
         DiagnosticIds.InvalidLifetime,
         DiagnosticIds.InvalidResolveBy,
         DiagnosticIds.ServiceRegistrationMustBeSealed,
-        DiagnosticIds.ServiceRegistrationMustImplementInterface
-    ];
+        DiagnosticIds.ServiceRegistrationMustImplementInterface);
 
     public override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
 
