@@ -16,8 +16,10 @@ namespace SharpServiceCollection.Generators;
 public sealed class InjectableDependencyGenerator : IIncrementalGenerator
 {
     private const string RuntimeAssemblyName = "SharpServiceCollection";
+
     private const string DisablePropertyName =
         "build_property.DisableInjectableDependencyGenerator";
+
     private const string GeneratedFileName = "SharpServiceCollection.InjectableDependency.Generated.g.cs";
     private const string UnsupportedLifetimeMessage = "Unsupported lifetime";
     private const string InterfaceNamePrefix = "I";
@@ -142,18 +144,18 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
 
         internal static class Methods
         {
-            internal const string TryAddSingleton = "TryAddSingleton";
-            internal const string TryAddScoped = "TryAddScoped";
-            internal const string TryAddTransient = "TryAddTransient";
-            internal const string AddSingleton = "AddSingleton";
-            internal const string AddScoped = "AddScoped";
-            internal const string AddTransient = "AddTransient";
-            internal const string TryAddKeyedSingleton = "TryAddKeyedSingleton";
-            internal const string TryAddKeyedScoped = "TryAddKeyedScoped";
-            internal const string TryAddKeyedTransient = "TryAddKeyedTransient";
-            internal const string AddKeyedSingleton = "AddKeyedSingleton";
-            internal const string AddKeyedScoped = "AddKeyedScoped";
-            internal const string AddKeyedTransient = "AddKeyedTransient";
+            internal const string TryAddSingleton = nameof(TryAddSingleton);
+            internal const string TryAddScoped = nameof(TryAddScoped);
+            internal const string TryAddTransient = nameof(TryAddTransient);
+            internal const string AddSingleton = nameof(AddSingleton);
+            internal const string AddScoped = nameof(AddScoped);
+            internal const string AddTransient = nameof(AddTransient);
+            internal const string TryAddKeyedSingleton = nameof(TryAddKeyedSingleton);
+            internal const string TryAddKeyedScoped = nameof(TryAddKeyedScoped);
+            internal const string TryAddKeyedTransient = nameof(TryAddKeyedTransient);
+            internal const string AddKeyedSingleton = nameof(AddKeyedSingleton);
+            internal const string AddKeyedScoped = nameof(AddKeyedScoped);
+            internal const string AddKeyedTransient = nameof(AddKeyedTransient);
         }
 
         internal static class Lifetimes
@@ -163,7 +165,6 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
             internal const string Transient = nameof(InstanceLifetime.Transient);
         }
     }
-
 
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
@@ -445,31 +446,43 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
     private static bool TryParseLifetime(TypedConstant value, out InstanceLifetime lifetime)
     {
         lifetime = default;
-        if (value.Value is not byte numeric ||
-            numeric is not ((byte)InstanceLifetime.Singleton or
-                (byte)InstanceLifetime.Scoped or
-                (byte)InstanceLifetime.Transient))
+
+        if (value.Value is not byte parsed)
         {
             return false;
         }
 
-        lifetime = (InstanceLifetime)numeric;
-        return true;
+        switch (parsed)
+        {
+            case (byte)InstanceLifetime.Singleton:
+            case (byte)InstanceLifetime.Scoped:
+            case (byte)InstanceLifetime.Transient:
+                lifetime = (InstanceLifetime)parsed;
+                return true;
+            default:
+                return false;
+        }
     }
 
     private static bool TryParseResolveBy(TypedConstant value, out ResolveBy resolveBy)
     {
         resolveBy = default;
-        if (value.Value is not byte numeric ||
-            numeric is not ((byte)ResolveBy.Self or
-                (byte)ResolveBy.ImplementedInterface or
-                (byte)ResolveBy.MatchingInterface))
+
+        if (value.Value is not byte parsed)
         {
             return false;
         }
 
-        resolveBy = (ResolveBy)numeric;
-        return true;
+        switch (parsed)
+        {
+            case (byte)ResolveBy.Self:
+            case (byte)ResolveBy.ImplementedInterface:
+            case (byte)ResolveBy.MatchingInterface:
+                resolveBy = (ResolveBy)parsed;
+                return true;
+            default:
+                return false;
+        }
     }
 
     private static bool GetNamedBool(AttributeData attribute, string key, bool defaultValue)
@@ -510,7 +523,7 @@ public sealed class InjectableDependencyGenerator : IIncrementalGenerator
             return argument.Value.Value switch
             {
                 int intValue => intValue,
-                uint uintValue when uintValue <= int.MaxValue => (int)uintValue,
+                uint uintValue and <= int.MaxValue => (int)uintValue,
                 _ => defaultValue
             };
         }
